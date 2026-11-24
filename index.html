@@ -1,0 +1,2944 @@
+/* Terra Chrona — complete source
+ * Stack: React 19 + TanStack Start (file-based routes) + Tailwind CSS + shadcn/ui, JavaScript/JSX.
+ * Packages used: react, react-dom, @tanstack/react-router, @tanstack/react-start,
+ * @tanstack/react-query, tailwindcss, lucide-react, @base44/sdk.
+ *
+ * Data model: the QuizResult entity lives in base44/entities/QuizResult.jsonc:
+ *   mode ("capitals" | "flags" | "history"), score, total, duration_seconds, missed (string[])
+ *   Access: each user reads, updates and deletes only their own records; admins see all.
+ *
+ * Not included: the platform's sign-in components (src/components/auth/*), the Base44
+ * runtime (base44Client, AuthContext) and the generated route tree, which the platform supplies.
+ * tailwind.config.js is also omitted: it only maps each CSS token in src/index.css to a
+ * Tailwind class of the same name (background, foreground, card, primary, secondary, muted,
+ * accent, destructive, border, input, ring, paper, chart-1..5) plus the four font roles.
+ */
+
+/* ==================== src/index.css ==================== */
+
+@import url('https://fonts.googleapis.com/css2?family=Instrument+Sans:wght@400;500;600&family=JetBrains+Mono:wght@400;500&family=Playfair+Display:ital,wght@0,400;0,500;0,600;0,700;1,400&family=Public+Sans:wght@300;400;500;600&display=swap');
+
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  :root {
+    --background: 156 20% 5%;
+    --foreground: 43 47% 94%;
+    --card: 156 14% 8%;
+    --card-foreground: 43 47% 94%;
+    --popover: 156 14% 8%;
+    --popover-foreground: 43 47% 94%;
+    --primary: 39 48% 56%;
+    --primary-foreground: 156 25% 6%;
+    --secondary: 170 16% 36%;
+    --secondary-foreground: 43 47% 94%;
+    --muted: 156 12% 12%;
+    --muted-foreground: 43 10% 70%;
+    --accent: 156 12% 15%;
+    --accent-foreground: 43 47% 94%;
+    --destructive: 0 60% 45%;
+    --destructive-foreground: 0 0% 98%;
+    --border: 156 10% 19%;
+    --input: 156 10% 19%;
+    --ring: 39 48% 56%;
+    --paper: 43 47% 94%;
+    --paper-foreground: 0 0% 10%;
+    --chart-1: 39 48% 56%;
+    --chart-2: 170 16% 36%;
+    --chart-3: 43 47% 94%;
+    --chart-4: 156 14% 30%;
+    --chart-5: 30 30% 45%;
+    --radius: 0.25rem;
+    --font-heading: "Playfair Display", Georgia, serif;
+    --font-body: "Public Sans", system-ui, sans-serif;
+    --font-display: "Instrument Sans", system-ui, sans-serif;
+    --font-mono: "JetBrains Mono", ui-monospace, monospace;
+    --sidebar-background: 156 14% 8%;
+    --sidebar-foreground: 43 47% 94%;
+    --sidebar-primary: 39 48% 56%;
+    --sidebar-primary-foreground: 156 25% 6%;
+    --sidebar-accent: 156 12% 15%;
+    --sidebar-accent-foreground: 43 47% 94%;
+    --sidebar-border: 156 10% 19%;
+    --sidebar-ring: 39 48% 56%;
+  }
+
+  .dark {
+    --background: 156 20% 5%;
+    --foreground: 43 47% 94%;
+    --card: 156 14% 8%;
+    --card-foreground: 43 47% 94%;
+    --popover: 156 14% 8%;
+    --popover-foreground: 43 47% 94%;
+    --primary: 39 48% 56%;
+    --primary-foreground: 156 25% 6%;
+    --secondary: 170 16% 36%;
+    --secondary-foreground: 43 47% 94%;
+    --muted: 156 12% 12%;
+    --muted-foreground: 43 10% 70%;
+    --accent: 156 12% 15%;
+    --accent-foreground: 43 47% 94%;
+    --destructive: 0 60% 45%;
+    --destructive-foreground: 0 0% 98%;
+    --border: 156 10% 19%;
+    --input: 156 10% 19%;
+    --ring: 39 48% 56%;
+    --paper: 43 47% 94%;
+    --paper-foreground: 0 0% 10%;
+    --chart-1: 39 48% 56%;
+    --chart-2: 170 16% 36%;
+    --chart-3: 43 47% 94%;
+    --chart-4: 156 14% 30%;
+    --chart-5: 30 30% 45%;
+    --radius: 0.25rem;
+  }
+}
+
+@layer base {
+  * {
+    @apply border-border outline-ring/50;
+  }
+
+  body {
+    @apply bg-background text-foreground font-body;
+    -webkit-font-smoothing: antialiased;
+  }
+
+  h1,
+  h2,
+  h3,
+  h4 {
+    @apply font-heading;
+  }
+
+  ::selection {
+    background: hsl(var(--primary) / 0.35);
+  }
+}
+
+/* --- Atlas scaffolding ------------------------------------------------- */
+
+.container-page {
+  width: 100%;
+  max-width: 1200px;
+  margin-inline: auto;
+  padding-inline: 1.25rem;
+}
+
+@media (min-width: 640px) {
+  .container-page {
+    padding-inline: 2rem;
+  }
+}
+
+.grid-lines {
+  background-image:
+    linear-gradient(to right, hsl(var(--border) / 0.55) 1px, transparent 1px),
+    linear-gradient(to bottom, hsl(var(--border) / 0.55) 1px, transparent 1px);
+  background-size: 72px 72px;
+}
+
+.eyebrow {
+  font-family: var(--font-mono);
+  font-size: 11px;
+  letter-spacing: 0.22em;
+  text-transform: uppercase;
+  color: hsl(var(--primary));
+}
+
+.rule-label {
+  font-family: var(--font-mono);
+  font-size: 10px;
+  letter-spacing: 0.18em;
+  text-transform: uppercase;
+  color: hsl(var(--muted-foreground));
+}
+
+
+/* ==================== src/routes/__root.jsx ==================== */
+
+import { HeadContent, Outlet, Scripts, createRootRoute } from "@tanstack/react-router";
+import { DefaultCatchBoundary } from "@/components/DefaultCatchBoundary";
+import { NotFound } from "@/components/NotFound";
+import { Toaster } from "@/components/ui/sonner";
+import { AuthProvider } from "@/lib/AuthContext";
+import { Base44Scripts } from "base44:document";
+import appCss from "@/index.css?url";
+
+export const Route = createRootRoute({
+  // Per-page <title>/meta come from each route's head(); this is the shared base.
+  head: () => ({
+    meta: [
+      { charSet: "utf-8" },
+      { name: "viewport", content: "width=device-width, initial-scale=1" },
+      { title: "Base44 App" },
+      { name: "description", content: "A full-stack Base44 app built with TanStack Start." },
+    ],
+    // No icon link: the platform adds the app's logo when serving.
+    links: [
+      { rel: "stylesheet", href: appCss },
+    ],
+  }),
+  errorComponent: DefaultCatchBoundary,
+  notFoundComponent: () => <NotFound />,
+  shellComponent: RootDocument,
+  component: RootComponent,
+});
+
+function RootComponent() {
+  return (
+    <AuthProvider>
+      <Outlet />
+      <Toaster />
+    </AuthProvider>
+  );
+}
+
+// The document. There is no index.html: the server renders <html> from here.
+function RootDocument({ children }) {
+  return (
+    <html lang="en">
+      <head>
+        <HeadContent />
+      </head>
+      {/* data-react-root: the builder's preview bridge looks for #root and falls back to this. */}
+      <body data-react-root="true">
+        {children}
+        <Base44Scripts />
+        <Scripts />
+      </body>
+    </html>
+  );
+}
+
+
+/* ==================== src/routes/_site.jsx ==================== */
+
+import { createFileRoute } from "@tanstack/react-router";
+import SiteLayout from "@/components/SiteLayout";
+
+export const Route = createFileRoute("/_site")({ component: SiteLayout });
+
+
+/* ==================== src/routes/_site/index.jsx ==================== */
+
+import { createFileRoute, Link } from "@tanstack/react-router";
+import { Flag, Globe2, Hourglass, Target } from "lucide-react";
+import Hero from "@/components/Hero";
+
+export const Route = createFileRoute("/_site/")({
+  head: () => ({
+    meta: [
+      { title: "Terra Chrona — Every country, capital, flag and era" },
+      {
+        name: "description",
+        content:
+          "An exhaustive atlas of the world: every sovereign state with its capital and flag, seven eras of history, and quizzes to test what you know.",
+      },
+    ],
+  }),
+  component: HomePage,
+});
+
+const STATS = [
+  { value: "197", label: "Countries" },
+  { value: "197", label: "Capitals" },
+  { value: "197", label: "Flags" },
+  { value: "7", label: "Eras" },
+  { value: "71", label: "Events" },
+];
+
+const ENTRIES = [
+  {
+    to: "/countries",
+    icon: Globe2,
+    kicker: "Space",
+    title: "The Atlas",
+    body: "Every sovereign state with its capital, region, land area, currency and languages.",
+    cta: "Browse the atlas",
+  },
+  {
+    to: "/flags",
+    icon: Flag,
+    kicker: "Vexillology",
+    title: "Flag vault",
+    body: "All 197 flags in one dense grid, filterable by region and searchable by name.",
+    cta: "Open the vault",
+  },
+  {
+    to: "/history",
+    icon: Hourglass,
+    kicker: "Time",
+    title: "Temporal continuum",
+    body: "Seven eras, from the first cities to the present, and the events that redrew the map.",
+    cta: "Scrub through time",
+  },
+  {
+    to: "/quizzes",
+    icon: Target,
+    kicker: "Recall",
+    title: "Drill room",
+    body: "Capitals, flags and dates. Ten questions at a time, scored and saved to your record.",
+    cta: "Start a drill",
+  },
+];
+
+const PILLARS = [
+  {
+    title: "Cartographic precision",
+    body: "Every entry carries the capital, the region, the land area and the currency, in the same order, every time. No entry is a stub.",
+  },
+  {
+    title: "Temporal depth",
+    body: "Countries are not fixed things. Each era entry names what changed, where, and which borders were redrawn because of it.",
+  },
+  {
+    title: "Deliberate excess",
+    body: "The whole world is here, not a curated sample of it. If it holds a seat at the United Nations, it holds a page.",
+  },
+];
+
+function HomePage() {
+  return (
+    <div>
+      <div className="grid-lines">
+        <Hero />
+      </div>
+
+      <section className="border-y border-border bg-card/50">
+        <div className="container-page grid grid-cols-2 divide-border py-8 sm:grid-cols-3 md:grid-cols-5 md:divide-x">
+          {STATS.map((stat) => (
+            <div key={stat.label} className="px-2 py-3 text-center md:py-1">
+              <p className="font-heading text-3xl text-foreground md:text-4xl">{stat.value}</p>
+              <p className="rule-label mt-1.5">{stat.label}</p>
+            </div>
+          ))}
+        </div>
+      </section>
+
+      <section className="container-page py-16 sm:py-20">
+        <div className="max-w-2xl">
+          <p className="eyebrow">The archive</p>
+          <h2 className="mt-4 text-3xl leading-tight text-foreground sm:text-4xl">
+            Four ways into the world
+          </h2>
+          <p className="mt-4 text-[15px] leading-relaxed text-muted-foreground">
+            Start with a country, a flag, a century, or a test of memory. Every path leads into
+            the same body of records, so whatever you learn in the drill room you can look up
+            here.
+          </p>
+        </div>
+
+        <div className="mt-10 grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+          {ENTRIES.map((entry) => {
+            const Icon = entry.icon;
+            return (
+              <Link
+                key={entry.to}
+                to={entry.to}
+                className="group flex flex-col justify-between border border-border bg-card p-5 transition-colors hover:border-primary/60 hover:bg-card/80"
+              >
+                <div>
+                  <div className="flex items-center justify-between">
+                    <Icon className="h-5 w-5 text-primary" aria-hidden="true" />
+                    <span className="rule-label">{entry.kicker}</span>
+                  </div>
+                  <h3 className="mt-6 text-xl text-foreground">{entry.title}</h3>
+                  <p className="mt-2.5 text-sm leading-relaxed text-muted-foreground">
+                    {entry.body}
+                  </p>
+                </div>
+                <span className="mt-6 inline-flex items-center gap-2 font-display text-[11px] uppercase tracking-[0.16em] text-primary">
+                  {entry.cta}
+                  <span
+                    aria-hidden="true"
+                    className="transition-transform group-hover:translate-x-1"
+                  >
+                    →
+                  </span>
+                </span>
+              </Link>
+            );
+          })}
+        </div>
+      </section>
+
+      <section className="bg-paper text-paper-foreground">
+        <div className="container-page py-16 sm:py-20">
+          <div className="grid gap-10 lg:grid-cols-[0.9fr_1.4fr]">
+            <div>
+              <p className="font-mono text-[11px] uppercase tracking-[0.22em] text-paper-foreground/60">
+                Why a full atlas
+              </p>
+              <h2 className="mt-4 text-3xl leading-tight sm:text-4xl">
+                Everything, in one place, at one standard.
+              </h2>
+              <p className="mt-4 max-w-md text-[15px] leading-relaxed text-paper-foreground/75">
+                Most geography sites stop at the capitals. This one keeps going: land area,
+                currencies, the languages spoken, and the historical era that produced the
+                border you are looking at.
+              </p>
+            </div>
+            <div className="grid gap-8 sm:grid-cols-3">
+              {PILLARS.map((pillar, i) => (
+                <div key={pillar.title}>
+                  <p className="font-mono text-xs tracking-[0.2em] text-paper-foreground/50">
+                    0{i + 1}
+                  </p>
+                  <h3 className="mt-3 text-lg leading-snug">{pillar.title}</h3>
+                  <p className="mt-2 text-sm leading-relaxed text-paper-foreground/75">
+                    {pillar.body}
+                  </p>
+                </div>
+              ))}
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <section className="container-page py-16 text-center sm:py-20">
+        <h2 className="mx-auto max-w-xl text-3xl leading-tight text-foreground sm:text-4xl">
+          Pick a continent, or let the drill room pick for you.
+        </h2>
+        <div className="mt-8 flex flex-col items-center justify-center gap-3 sm:flex-row">
+          <Link
+            to="/countries"
+            className="inline-flex h-11 items-center border border-primary bg-primary px-6 font-display text-[12px] font-semibold uppercase tracking-[0.16em] text-primary-foreground transition-colors hover:bg-secondary hover:border-secondary hover:text-foreground"
+          >
+            Browse all countries
+          </Link>
+          <Link
+            to="/quizzes"
+            className="inline-flex h-11 items-center border border-border px-6 font-display text-[12px] font-semibold uppercase tracking-[0.16em] text-foreground transition-colors hover:border-primary hover:text-primary"
+          >
+            Take a quiz
+          </Link>
+        </div>
+      </section>
+    </div>
+  );
+}
+
+
+/* ==================== src/routes/_site/countries.index.jsx ==================== */
+
+import { useMemo, useState } from "react";
+import { createFileRoute } from "@tanstack/react-router";
+import { Search } from "lucide-react";
+import PageHeader from "@/components/PageHeader";
+import CountryCard from "@/components/CountryCard";
+import { COUNTRIES, REGIONS, REGION_BLURBS } from "@/data/countries";
+
+export const Route = createFileRoute("/_site/countries/")({
+  head: () => ({
+    meta: [
+      { title: "The Atlas — every country and capital | Terra Chrona" },
+      {
+        name: "description",
+        content:
+          "197 states and territories with their capitals, regions, land area, currencies and languages. Search by country, capital or region.",
+      },
+    ],
+  }),
+  component: AtlasPage,
+});
+
+function AtlasPage() {
+  const [query, setQuery] = useState("");
+  const [region, setRegion] = useState("All");
+
+  const visible = useMemo(() => {
+    const term = query.trim().toLowerCase();
+    return COUNTRIES.filter((country) => {
+      if (region !== "All" && country.region !== region) return false;
+      if (!term) return true;
+      return (
+        country.name.toLowerCase().includes(term) ||
+        country.capital.toLowerCase().includes(term) ||
+        country.subregion.toLowerCase().includes(term) ||
+        country.languages.toLowerCase().includes(term)
+      );
+    });
+  }, [query, region]);
+
+  return (
+    <div>
+      <PageHeader
+        eyebrow="Space"
+        title="The Atlas"
+        description="Every sovereign state on earth, held to the same standard: capital, region, land area, population, currency, languages, and the history that produced the border."
+      />
+
+      <section className="border-b border-border bg-background">
+        <div className="container-page py-6">
+          <div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
+            <label className="relative flex w-full items-center lg:max-w-sm">
+              <Search
+                className="pointer-events-none absolute left-3 h-4 w-4 text-muted-foreground"
+                aria-hidden="true"
+              />
+              <input
+                type="search"
+                value={query}
+                onChange={(event) => setQuery(event.target.value)}
+                placeholder="Country, capital, language…"
+                aria-label="Search the atlas"
+                className="h-11 w-full border border-border bg-card pl-10 pr-3 text-sm text-foreground placeholder:text-muted-foreground focus:border-primary focus:outline-none"
+              />
+            </label>
+
+            <div className="flex flex-wrap gap-2">
+              {["All", ...REGIONS].map((item) => {
+                const active = region === item;
+                return (
+                  <button
+                    key={item}
+                    type="button"
+                    onClick={() => setRegion(item)}
+                    className={`h-9 border px-3.5 font-display text-[11px] uppercase tracking-[0.12em] transition-colors ${
+                      active
+                        ? "border-primary bg-primary text-primary-foreground"
+                        : "border-border text-muted-foreground hover:border-primary/60 hover:text-foreground"
+                    }`}
+                  >
+                    {item}
+                  </button>
+                );
+              })}
+            </div>
+          </div>
+
+          <p className="mt-4 font-mono text-[11px] uppercase tracking-[0.14em] text-muted-foreground">
+            {visible.length} {visible.length === 1 ? "entry" : "entries"}
+            {region !== "All" ? ` · ${region}` : ""}
+            {region !== "All" ? ` — ${REGION_BLURBS[region]}` : ""}
+          </p>
+        </div>
+      </section>
+
+      <section className="container-page py-10">
+        {visible.length === 0 ? (
+          <div className="border border-border bg-card p-10 text-center">
+            <p className="text-sm text-muted-foreground">
+              Nothing in the archive matches “{query}”. Try a capital city, a language, or a
+              subregion.
+            </p>
+          </div>
+        ) : (
+          <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-3">
+            {visible.map((country) => (
+              <CountryCard key={country.code} country={country} />
+            ))}
+          </div>
+        )}
+      </section>
+    </div>
+  );
+}
+
+
+/* ==================== src/routes/_site/countries.$code.jsx ==================== */
+
+import { createFileRoute, Link, notFound } from "@tanstack/react-router";
+import { ArrowLeft, ArrowUpRight } from "lucide-react";
+import { Image } from "@/components/ui/image";
+import {
+  density,
+  flagEmoji,
+  flagUrl,
+  formatArea,
+  formatNumber,
+  formatPopulation,
+  getCountry,
+  neighbours,
+} from "@/data/countries";
+
+export const Route = createFileRoute("/_site/countries/$code")({
+  loader: ({ params }) => {
+    const country = getCountry(params.code);
+    if (!country) throw notFound();
+    return { country };
+  },
+  head: ({ loaderData }) => {
+    const country = loaderData?.country;
+    return {
+      meta: [
+        { title: country ? `${country.name} — capital, flag and facts | Terra Chrona` : "Country" },
+        {
+          name: "description",
+          content: country
+            ? `${country.name}: capital ${country.capital}, ${country.subregion}. Population, land area, currency, languages and history.`
+            : "A country entry in the Terra Chrona atlas.",
+        },
+      ],
+    };
+  },
+  component: CountryPage,
+});
+
+function CountryPage() {
+  const { country } = Route.useLoaderData();
+  const related = neighbours(country, 4);
+  const perKm = density(country);
+
+  const facts = [
+    ["Capital", country.capital],
+    ["Region", country.region],
+    ["Subregion", country.subregion],
+    ["Population", formatPopulation(country.population)],
+    ["Land area", formatArea(country.area)],
+    ["Density", perKm ? `${formatNumber(perKm)} people / km²` : "—"],
+    ["Currency", country.currency],
+    ["Languages", country.languages],
+  ];
+
+  return (
+    <div>
+      <div className="border-b border-border bg-card/40">
+        <div className="container-page flex items-center justify-between gap-4 py-4">
+          <Link
+            to="/countries"
+            className="inline-flex items-center gap-2 font-display text-[11px] uppercase tracking-[0.16em] text-muted-foreground transition-colors hover:text-primary"
+          >
+            <ArrowLeft className="h-3.5 w-3.5" aria-hidden="true" /> The Atlas
+          </Link>
+          <p className="font-mono text-[11px] uppercase tracking-[0.18em] text-muted-foreground">
+            {country.region} · {country.code}
+          </p>
+        </div>
+      </div>
+
+      <section className="container-page py-10 sm:py-14">
+        <div className="grid gap-10 lg:grid-cols-[minmax(0,0.85fr)_minmax(0,1.15fr)] lg:gap-14">
+          <div className="lg:sticky lg:top-24 lg:self-start">
+            <div className="border border-border bg-card p-4">
+              <div className="aspect-[3/2] w-full overflow-hidden bg-background">
+                <Image
+                  src={flagUrl(country.code, 1280)}
+                  alt={`Flag of ${country.name}`}
+                  fittingType="contain"
+                  className="h-full w-full"
+                />
+              </div>
+              <div className="mt-4 flex items-center justify-between">
+                <p className="font-mono text-[11px] uppercase tracking-[0.18em] text-muted-foreground">
+                  National flag
+                </p>
+                <p className="text-lg leading-none" aria-hidden="true">
+                  {flagEmoji(country.code)}
+                </p>
+              </div>
+            </div>
+
+            <h1 className="mt-8 text-4xl leading-[1.05] text-foreground sm:text-5xl">
+              {country.name}
+            </h1>
+            <p className="mt-3 text-lg text-muted-foreground">
+              Capital: <span className="text-foreground">{country.capital}</span>
+            </p>
+
+            <div className="mt-6 flex flex-wrap gap-2.5">
+              <Link
+                to="/quizzes/$mode"
+                params={{ mode: "flags" }}
+                className="inline-flex h-10 items-center gap-2 border border-primary bg-primary px-4 font-display text-[11px] font-semibold uppercase tracking-[0.14em] text-primary-foreground transition-colors hover:bg-secondary hover:border-secondary hover:text-foreground"
+              >
+                Drill flags <ArrowUpRight className="h-3.5 w-3.5" aria-hidden="true" />
+              </Link>
+              <Link
+                to="/flags"
+                className="inline-flex h-10 items-center border border-border px-4 font-display text-[11px] font-semibold uppercase tracking-[0.14em] text-foreground transition-colors hover:border-primary hover:text-primary"
+              >
+                Flag vault
+              </Link>
+            </div>
+          </div>
+
+          <div>
+            <dl className="divide-y divide-border border-y border-border">
+              {facts.map(([label, value]) => (
+                <div key={label} className="grid grid-cols-[110px_1fr] gap-4 py-3.5 sm:grid-cols-[150px_1fr]">
+                  <dt className="rule-label pt-0.5">{label}</dt>
+                  <dd className="text-[15px] leading-snug text-foreground/90">{value}</dd>
+                </div>
+              ))}
+            </dl>
+
+            <div className="mt-10 border-l-2 border-primary pl-5">
+              <p className="rule-label mb-2">In brief</p>
+              <p className="text-[15px] leading-relaxed text-foreground/85">{country.note}</p>
+            </div>
+
+            <div className="mt-12">
+              <div className="flex items-baseline justify-between">
+                <h2 className="text-xl text-foreground">Elsewhere in {country.region}</h2>
+                <Link
+                  to="/countries"
+                  className="font-display text-[10px] uppercase tracking-[0.16em] text-muted-foreground transition-colors hover:text-primary"
+                >
+                  All regions
+                </Link>
+              </div>
+              <div className="mt-4 grid gap-2.5 sm:grid-cols-2">
+                {related.map((other) => (
+                  <Link
+                    key={other.code}
+                    to="/countries/$code"
+                    params={{ code: other.code }}
+                    className="flex items-center gap-3 border border-border bg-card p-3 transition-colors hover:border-primary/60"
+                  >
+                    <span className="text-base" aria-hidden="true">
+                      {flagEmoji(other.code)}
+                    </span>
+                    <span className="min-w-0">
+                      <span className="block truncate text-sm text-foreground">{other.name}</span>
+                      <span className="block truncate text-xs text-muted-foreground">
+                        {other.capital}
+                      </span>
+                    </span>
+                  </Link>
+                ))}
+              </div>
+            </div>
+          </div>
+        </div>
+      </section>
+    </div>
+  );
+}
+
+
+/* ==================== src/routes/_site/flags.jsx ==================== */
+
+import { useMemo, useState } from "react";
+import { createFileRoute, Link } from "@tanstack/react-router";
+import { Search } from "lucide-react";
+import PageHeader from "@/components/PageHeader";
+import { Image } from "@/components/ui/image";
+import { COUNTRIES, REGIONS, flagUrl } from "@/data/countries";
+
+export const Route = createFileRoute("/_site/flags")({
+  head: () => ({
+    meta: [
+      { title: "Flag vault — every national flag | Terra Chrona" },
+      {
+        name: "description",
+        content:
+          "Every national flag in the world in one filterable grid, with the country and capital each one belongs to.",
+      },
+    ],
+  }),
+  component: FlagsPage,
+});
+
+function FlagsPage() {
+  const [query, setQuery] = useState("");
+  const [region, setRegion] = useState("All");
+
+  const visible = useMemo(() => {
+    const term = query.trim().toLowerCase();
+    return COUNTRIES.filter((country) => {
+      if (region !== "All" && country.region !== region) return false;
+      if (!term) return true;
+      return (
+        country.name.toLowerCase().includes(term) ||
+        country.capital.toLowerCase().includes(term)
+      );
+    });
+  }, [query, region]);
+
+  return (
+    <div>
+      <PageHeader
+        eyebrow="Vexillology"
+        title="The flag vault"
+        description="Every national flag on earth, in one grid. Some differ by a shade or a single star, which is exactly why the flag drill exists."
+      />
+
+      <section className="border-b border-border">
+        <div className="container-page py-6">
+          <div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
+            <label className="relative flex w-full items-center lg:max-w-sm">
+              <Search
+                className="pointer-events-none absolute left-3 h-4 w-4 text-muted-foreground"
+                aria-hidden="true"
+              />
+              <input
+                type="search"
+                value={query}
+                onChange={(event) => setQuery(event.target.value)}
+                placeholder="Country or capital…"
+                aria-label="Search flags"
+                className="h-11 w-full border border-border bg-card pl-10 pr-3 text-sm text-foreground placeholder:text-muted-foreground focus:border-primary focus:outline-none"
+              />
+            </label>
+
+            <div className="flex flex-wrap gap-2">
+              {["All", ...REGIONS].map((item) => {
+                const active = region === item;
+                return (
+                  <button
+                    key={item}
+                    type="button"
+                    onClick={() => setRegion(item)}
+                    className={`h-9 border px-3.5 font-display text-[11px] uppercase tracking-[0.12em] transition-colors ${
+                      active
+                        ? "border-primary bg-primary text-primary-foreground"
+                        : "border-border text-muted-foreground hover:border-primary/60 hover:text-foreground"
+                    }`}
+                  >
+                    {item}
+                  </button>
+                );
+              })}
+            </div>
+          </div>
+          <p className="mt-4 font-mono text-[11px] uppercase tracking-[0.14em] text-muted-foreground">
+            {visible.length} flags
+          </p>
+        </div>
+      </section>
+
+      <section className="container-page py-10">
+        {visible.length === 0 ? (
+          <div className="border border-border bg-card p-10 text-center">
+            <p className="text-sm text-muted-foreground">No flag matches “{query}”.</p>
+          </div>
+        ) : (
+          <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5">
+            {visible.map((country) => (
+              <Link
+                key={country.code}
+                to="/countries/$code"
+                params={{ code: country.code }}
+                className="group border border-border bg-card transition-colors hover:border-primary/60"
+              >
+                <div className="bg-paper p-3">
+                  <div className="aspect-[3/2] w-full">
+                    <Image
+                      src={flagUrl(country.code, 320)}
+                      alt={`Flag of ${country.name}`}
+                      fittingType="contain"
+                      className="h-full w-full"
+                    />
+                  </div>
+                </div>
+                <div className="px-3 py-3">
+                  <p className="truncate text-sm text-foreground transition-colors group-hover:text-primary">
+                    {country.name}
+                  </p>
+                  <p className="mt-0.5 truncate text-xs text-muted-foreground">{country.capital}</p>
+                </div>
+              </Link>
+            ))}
+          </div>
+        )}
+      </section>
+    </div>
+  );
+}
+
+
+/* ==================== src/routes/_site/history.index.jsx ==================== */
+
+import { createFileRoute, Link } from "@tanstack/react-router";
+import PageHeader from "@/components/PageHeader";
+import { ERAS, eventCountByEra } from "@/data/history";
+
+export const Route = createFileRoute("/_site/history/")({
+  head: () => ({
+    meta: [
+      { title: "The Temporal Continuum — seven eras of history | Terra Chrona" },
+      {
+        name: "description",
+        content:
+          "Seven eras from the first cities to the present day, with the events that redrew the map of the world.",
+      },
+    ],
+  }),
+  component: HistoryPage,
+});
+
+function HistoryPage() {
+  const counts = eventCountByEra();
+  const total = Object.values(counts).reduce((sum, value) => sum + value, 0);
+
+  return (
+    <div>
+      <PageHeader
+        eyebrow="Time"
+        title="The Temporal Continuum"
+        description={`${total} events across seven eras, from the invention of writing to the present. Each era explains what changed, where, and which borders moved because of it.`}
+      />
+
+      <section className="container-page py-10 sm:py-14">
+        <ul className="border-t border-border">
+          {ERAS.map((era, index) => (
+            <li key={era.slug}>
+              <Link
+                to="/history/$era"
+                params={{ era: era.slug }}
+                className="group grid gap-4 border-b border-border py-7 transition-colors hover:bg-card/50 sm:grid-cols-[80px_1fr_auto] sm:items-start sm:gap-8 sm:px-2"
+              >
+                <p className="font-mono text-[11px] uppercase tracking-[0.18em] text-primary">
+                  0{index + 1}
+                </p>
+                <div>
+                  <h2 className="text-2xl leading-tight text-foreground transition-colors group-hover:text-primary sm:text-3xl">
+                    {era.title}
+                  </h2>
+                  <p className="mt-1.5 font-mono text-[11px] uppercase tracking-[0.14em] text-muted-foreground">
+                    {era.span} · {counts[era.slug]} events
+                  </p>
+                  <p className="mt-3 max-w-2xl text-sm leading-relaxed text-muted-foreground">
+                    {era.summary}
+                  </p>
+                </div>
+                <span
+                  aria-hidden="true"
+                  className="hidden font-display text-lg text-muted-foreground transition-transform group-hover:translate-x-1 group-hover:text-primary sm:block"
+                >
+                  →
+                </span>
+              </Link>
+            </li>
+          ))}
+        </ul>
+      </section>
+
+      <section className="border-t border-border bg-paper text-paper-foreground">
+        <div className="container-page py-14">
+          <p className="font-mono text-[11px] uppercase tracking-[0.22em] text-paper-foreground/60">
+            How to read the continuum
+          </p>
+          <div className="mt-6 grid gap-8 sm:grid-cols-3">
+            <div>
+              <h3 className="text-lg">Every date is a place</h3>
+              <p className="mt-2 text-sm leading-relaxed text-paper-foreground/75">
+                Each event names where it happened, because the same year looked different in
+                Cusco and in Constantinople.
+              </p>
+            </div>
+            <div>
+              <h3 className="text-lg">Borders are consequences</h3>
+              <p className="mt-2 text-sm leading-relaxed text-paper-foreground/75">
+                The modern map is mostly a product of the last two centuries. Earlier eras are
+                there to show you why.
+              </p>
+            </div>
+            <div>
+              <h3 className="text-lg">Then test it</h3>
+              <p className="mt-2 text-sm leading-relaxed text-paper-foreground/75">
+                The dates drill asks you to place an event in the right year. Read first, then
+                try it.
+              </p>
+            </div>
+          </div>
+          <Link
+            to="/quizzes/$mode"
+            params={{ mode: "history" }}
+            className="mt-8 inline-flex h-10 items-center border border-paper-foreground/30 px-5 font-display text-[11px] font-semibold uppercase tracking-[0.16em] transition-colors hover:border-paper-foreground hover:bg-paper-foreground hover:text-paper"
+          >
+            Open the dates drill
+          </Link>
+        </div>
+      </section>
+    </div>
+  );
+}
+
+
+/* ==================== src/routes/_site/history.$era.jsx ==================== */
+
+import { createFileRoute, Link, notFound } from "@tanstack/react-router";
+import { ArrowLeft, ArrowRight } from "lucide-react";
+import { ERAS, eventsForEra, getEra } from "@/data/history";
+
+export const Route = createFileRoute("/_site/history/$era")({
+  loader: ({ params }) => {
+    const era = getEra(params.era);
+    if (!era) throw notFound();
+    return { era, events: eventsForEra(params.era) };
+  },
+  head: ({ loaderData }) => {
+    const era = loaderData?.era;
+    return {
+      meta: [
+        { title: era ? `${era.title} (${era.span}) — Terra Chrona` : "Era" },
+        { name: "description", content: era?.summary || "An era in the temporal continuum." },
+      ],
+    };
+  },
+  component: EraPage,
+});
+
+const TAG_DOT = {
+  Politics: "bg-primary",
+  Conflict: "bg-destructive",
+  Science: "bg-secondary",
+  Culture: "bg-foreground/70",
+  Religion: "bg-foreground/40",
+  Economy: "bg-primary/60",
+  Exploration: "bg-secondary/70",
+};
+
+function EraPage() {
+  const { era, events } = Route.useLoaderData();
+  const index = ERAS.findIndex((item) => item.slug === era.slug);
+  const previous = index > 0 ? ERAS[index - 1] : null;
+  const next = index < ERAS.length - 1 ? ERAS[index + 1] : null;
+
+  return (
+    <div>
+      <div className="border-b border-border bg-card/40">
+        <div className="container-page py-4">
+          <Link
+            to="/history"
+            className="inline-flex items-center gap-2 font-display text-[11px] uppercase tracking-[0.16em] text-muted-foreground transition-colors hover:text-primary"
+          >
+            <ArrowLeft className="h-3.5 w-3.5" aria-hidden="true" /> All eras
+          </Link>
+        </div>
+      </div>
+
+      <div className="container-page py-10 sm:py-14">
+        <p className="eyebrow">Era 0{index + 1} · {era.span}</p>
+        <h1 className="mt-4 max-w-3xl text-4xl leading-[1.05] text-foreground sm:text-5xl">
+          {era.title}
+        </h1>
+        <p className="mt-5 max-w-2xl text-[15px] leading-relaxed text-muted-foreground">
+          {era.summary}
+        </p>
+        <p className="mt-4 max-w-2xl border-l-2 border-secondary pl-4 text-sm italic leading-relaxed text-foreground/70">
+          {era.mapNote}
+        </p>
+
+        <div className="mt-10 -mx-1 flex gap-1 overflow-x-auto pb-2">
+          {ERAS.map((item, i) => {
+            const active = item.slug === era.slug;
+            return (
+              <Link
+                key={item.slug}
+                to="/history/$era"
+                params={{ era: item.slug }}
+                className={`shrink-0 border px-3 py-2 font-display text-[10px] uppercase tracking-[0.12em] transition-colors ${
+                  active
+                    ? "border-primary bg-primary text-primary-foreground"
+                    : "border-border text-muted-foreground hover:border-primary/60 hover:text-foreground"
+                }`}
+              >
+                0{i + 1} {item.title}
+              </Link>
+            );
+          })}
+        </div>
+
+        <ol className="mt-12 border-t border-border">
+          {events.map((event) => (
+            <li key={event.id} className="grid gap-3 border-b border-border py-6 sm:grid-cols-[130px_1fr] sm:gap-8">
+              <div>
+                <p className="font-mono text-xs uppercase tracking-[0.12em] text-primary">
+                  {event.year}
+                </p>
+                <p className="mt-1.5 flex items-center gap-2 text-[10px] uppercase tracking-[0.14em] text-muted-foreground">
+                  <span
+                    className={`inline-block h-1.5 w-1.5 ${TAG_DOT[event.tag] || "bg-muted-foreground"}`}
+                    aria-hidden="true"
+                  />
+                  {event.tag}
+                </p>
+              </div>
+              <div>
+                <h2 className="text-xl leading-snug text-foreground">{event.title}</h2>
+                <p className="mt-1 font-mono text-[11px] uppercase tracking-[0.14em] text-muted-foreground">
+                  {event.place}
+                </p>
+                <p className="mt-2.5 max-w-2xl text-sm leading-relaxed text-muted-foreground">
+                  {event.summary}
+                </p>
+              </div>
+            </li>
+          ))}
+        </ol>
+
+        <div className="mt-10 flex flex-col gap-3 sm:flex-row sm:justify-between">
+          {previous ? (
+            <Link
+              to="/history/$era"
+              params={{ era: previous.slug }}
+              className="group inline-flex items-center gap-3 border border-border px-4 py-3 transition-colors hover:border-primary/60"
+            >
+              <ArrowLeft className="h-4 w-4 text-muted-foreground" aria-hidden="true" />
+              <span>
+                <span className="block font-mono text-[10px] uppercase tracking-[0.14em] text-muted-foreground">
+                  Earlier
+                </span>
+                <span className="block text-sm text-foreground group-hover:text-primary">
+                  {previous.title}
+                </span>
+              </span>
+            </Link>
+          ) : (
+            <span />
+          )}
+          {next ? (
+            <Link
+              to="/history/$era"
+              params={{ era: next.slug }}
+              className="group inline-flex items-center gap-3 border border-border px-4 py-3 text-right transition-colors hover:border-primary/60 sm:flex-row-reverse"
+            >
+              <ArrowRight className="h-4 w-4 text-muted-foreground" aria-hidden="true" />
+              <span>
+                <span className="block font-mono text-[10px] uppercase tracking-[0.14em] text-muted-foreground">
+                  Later
+                </span>
+                <span className="block text-sm text-foreground group-hover:text-primary">
+                  {next.title}
+                </span>
+              </span>
+            </Link>
+          ) : (
+            <Link
+              to="/quizzes/$mode"
+              params={{ mode: "history" }}
+              className="inline-flex items-center gap-2 border border-primary bg-primary px-4 py-3 font-display text-[11px] font-semibold uppercase tracking-[0.14em] text-primary-foreground"
+            >
+              Test yourself on these dates
+            </Link>
+          )}
+        </div>
+      </div>
+    </div>
+  );
+}
+
+
+/* ==================== src/routes/_site/quizzes.index.jsx ==================== */
+
+import { useEffect, useState } from "react";
+import { createFileRoute, Link } from "@tanstack/react-router";
+import { Flag, Hourglass, Landmark } from "lucide-react";
+import PageHeader from "@/components/PageHeader";
+import { QUIZ_MODES } from "@/lib/quiz";
+import { base44 } from "@/api/base44Client";
+import { useAuth } from "@/lib/AuthContext";
+
+export const Route = createFileRoute("/_site/quizzes/")({
+  head: () => ({
+    meta: [
+      { title: "Quizzes — Terra Chrona" },
+      {
+        name: "description",
+        content:
+          "Drill capitals, flags and historical dates. Ten questions a round, scored and saved to your record.",
+      },
+    ],
+  }),
+  component: QuizzesPage,
+});
+
+const ICONS = { capitals: Landmark, flags: Flag, history: Hourglass };
+const MODE_LABELS = { capitals: "Capitals", flags: "Flags", history: "Dates & events" };
+
+function QuizzesPage() {
+  const { isAuthenticated, isLoadingAuth, navigateToLogin } = useAuth();
+  const [results, setResults] = useState(null);
+
+  useEffect(() => {
+    if (isLoadingAuth) return;
+    if (!isAuthenticated) {
+      setResults([]);
+      return;
+    }
+    let active = true;
+    base44.entities.QuizResult.list({ sort: "-created_date", limit: 6 })
+      .then((page) => {
+        if (active) setResults(Array.isArray(page) ? page : page.items || []);
+      })
+      .catch(() => {
+        if (active) setResults([]);
+      });
+    return () => {
+      active = false;
+    };
+  }, [isAuthenticated, isLoadingAuth]);
+
+  return (
+    <div>
+      <PageHeader
+        eyebrow="Recall"
+        title="The drill room"
+        description="Three ways to find out what you actually know. Each round is ten questions, drawn fresh from the atlas every time."
+      />
+
+      <section className="container-page py-12 sm:py-16">
+        <div className="grid gap-4 md:grid-cols-3">
+          {QUIZ_MODES.map((mode) => {
+            const Icon = ICONS[mode.slug];
+            return (
+              <Link
+                key={mode.slug}
+                to="/quizzes/$mode"
+                params={{ mode: mode.slug }}
+                className="group flex flex-col justify-between border border-border bg-card p-6 transition-colors hover:border-primary/60"
+              >
+                <div>
+                  <div className="flex items-center justify-between">
+                    <Icon className="h-5 w-5 text-primary" aria-hidden="true" />
+                    <span className="rule-label">{mode.kicker}</span>
+                  </div>
+                  <h2 className="mt-6 text-2xl text-foreground">{mode.title}</h2>
+                  <p className="mt-2.5 text-sm leading-relaxed text-muted-foreground">
+                    {mode.blurb}
+                  </p>
+                </div>
+                <span className="mt-6 inline-flex items-center gap-2 font-display text-[11px] uppercase tracking-[0.16em] text-primary">
+                  Start drill
+                  <span aria-hidden="true" className="transition-transform group-hover:translate-x-1">
+                    →
+                  </span>
+                </span>
+              </Link>
+            );
+          })}
+        </div>
+      </section>
+
+      <section className="border-t border-border bg-card/40">
+        <div className="container-page py-12 sm:py-14">
+          <div className="flex flex-wrap items-baseline justify-between gap-4">
+            <h2 className="text-2xl text-foreground">Your last rounds</h2>
+            {isAuthenticated && (
+              <Link
+                to="/progress"
+                className="font-display text-[11px] uppercase tracking-[0.16em] text-primary"
+              >
+                Full record →
+              </Link>
+            )}
+          </div>
+
+          {!isAuthenticated && !isLoadingAuth && (
+            <div className="mt-6 flex flex-col gap-4 border border-border bg-background p-6 sm:flex-row sm:items-center sm:justify-between">
+              <p className="text-sm text-muted-foreground">
+                Sign in to keep a running record of every round, with your best score per drill.
+              </p>
+              <button
+                type="button"
+                onClick={() => navigateToLogin()}
+                className="inline-flex h-10 shrink-0 items-center border border-primary bg-primary px-5 font-display text-[11px] font-semibold uppercase tracking-[0.16em] text-primary-foreground"
+              >
+                Sign in
+              </button>
+            </div>
+          )}
+
+          {isAuthenticated && results && results.length === 0 && (
+            <p className="mt-6 text-sm text-muted-foreground">
+              No rounds yet. Pick a drill above and the result will land here.
+            </p>
+          )}
+
+          {isAuthenticated && results && results.length > 0 && (
+            <ul className="mt-6 divide-y divide-border border-y border-border">
+              {results.map((result) => (
+                <li key={result.id} className="flex items-center justify-between gap-4 py-3.5">
+                  <div className="flex items-center gap-4">
+                    <span className="font-mono text-[11px] uppercase tracking-[0.14em] text-muted-foreground">
+                      {MODE_LABELS[result.mode] || result.mode}
+                    </span>
+                    <span className="text-sm text-foreground/85">
+                      {result.score} / {result.total}
+                    </span>
+                  </div>
+                  <span className="font-mono text-[11px] text-muted-foreground">
+                    {result.created_date
+                      ? new Date(result.created_date).toLocaleDateString("en-GB", {
+                          day: "2-digit",
+                          month: "short",
+                          timeZone: "UTC",
+                        })
+                      : ""}
+                  </span>
+                </li>
+              ))}
+            </ul>
+          )}
+        </div>
+      </section>
+    </div>
+  );
+}
+
+
+/* ==================== src/routes/_site/quizzes.$mode.jsx ==================== */
+
+import { createFileRoute, Link, notFound } from "@tanstack/react-router";
+import QuizRunner from "@/components/quiz/QuizRunner";
+import { getMode } from "@/lib/quiz";
+
+export const Route = createFileRoute("/_site/quizzes/$mode")({
+  loader: ({ params }) => {
+    const mode = getMode(params.mode);
+    if (!mode) throw notFound();
+    return { mode };
+  },
+  head: ({ loaderData }) => ({
+    meta: [
+      { title: `${loaderData?.mode?.title || "Drill"} — Terra Chrona quizzes` },
+      { name: "description", content: loaderData?.mode?.blurb || "A ten-question geography drill." },
+    ],
+  }),
+  component: QuizModePage,
+});
+
+function QuizModePage() {
+  const { mode } = Route.useLoaderData();
+
+  return (
+    <div>
+      <div className="border-b border-border bg-card/40">
+        <div className="container-page flex flex-wrap items-center justify-between gap-3 py-5">
+          <Link
+            to="/quizzes"
+            className="font-display text-[11px] uppercase tracking-[0.16em] text-muted-foreground transition-colors hover:text-primary"
+          >
+            ← All drills
+          </Link>
+          <p className="eyebrow">{mode.title}</p>
+        </div>
+      </div>
+      <QuizRunner mode={mode.slug} />
+    </div>
+  );
+}
+
+
+/* ==================== src/routes/_authed.jsx ==================== */
+
+import { createFileRoute } from "@tanstack/react-router";
+import { AuthGateError, requireSignedIn } from "@/components/auth/AuthGate";
+import SiteLayout from "@/components/SiteLayout";
+
+export const Route = createFileRoute("/_authed")({
+  ssr: false,
+  beforeLoad: requireSignedIn,
+  errorComponent: AuthGateError,
+  component: SiteLayout,
+});
+
+
+/* ==================== src/routes/_authed/progress.jsx ==================== */
+
+import { useEffect, useState } from "react";
+import { createFileRoute, Link } from "@tanstack/react-router";
+import PageHeader from "@/components/PageHeader";
+import { base44 } from "@/api/base44Client";
+
+export const Route = createFileRoute("/_authed/progress")({
+  head: () => ({
+    meta: [
+      { title: "My record — Terra Chrona" },
+      { name: "description", content: "Every quiz round you have played, scored and kept." },
+    ],
+  }),
+  component: ProgressPage,
+});
+
+const MODE_LABELS = { capitals: "Capitals", flags: "Flags", history: "Dates & events" };
+
+function ProgressPage() {
+  const { user } = Route.useRouteContext();
+  const [results, setResults] = useState(null);
+
+  useEffect(() => {
+    let active = true;
+    base44.entities.QuizResult.list({ sort: "-created_date", limit: 100 })
+      .then((page) => {
+        if (active) setResults(Array.isArray(page) ? page : page.items || []);
+      })
+      .catch(() => {
+        if (active) setResults([]);
+      });
+    return () => {
+      active = false;
+    };
+  }, []);
+
+  const rounds = results || [];
+  const questions = rounds.reduce((sum, result) => sum + (result.total || 0), 0);
+  const correct = rounds.reduce((sum, result) => sum + (result.score || 0), 0);
+  const accuracy = questions ? Math.round((correct / questions) * 100) : 0;
+
+  const bestFor = (mode) => {
+    const relevant = rounds.filter((result) => result.mode === mode);
+    if (relevant.length === 0) return null;
+    return Math.max(
+      ...relevant.map((result) => Math.round((result.score / (result.total || 1)) * 100))
+    );
+  };
+
+  const stats = [
+    { label: "Rounds played", value: rounds.length },
+    { label: "Questions answered", value: questions },
+    { label: "Overall accuracy", value: `${accuracy}%` },
+  ];
+
+  return (
+    <div>
+      <PageHeader
+        eyebrow="Your record"
+        title={user?.full_name ? `${user.full_name}'s record` : "My record"}
+        description="Every round you finish is kept here, so you can see which part of the world keeps slipping."
+      />
+
+      <section className="container-page py-10 sm:py-14">
+        <div className="grid gap-3 sm:grid-cols-3">
+          {stats.map((stat) => (
+            <div key={stat.label} className="border border-border bg-card p-6">
+              <p className="font-heading text-4xl text-foreground">{stat.value}</p>
+              <p className="rule-label mt-2">{stat.label}</p>
+            </div>
+          ))}
+        </div>
+
+        <div className="mt-10">
+          <h2 className="text-xl text-foreground">Best score by drill</h2>
+          <div className="mt-4 grid gap-3 sm:grid-cols-3">
+            {["capitals", "flags", "history"].map((mode) => {
+              const best = bestFor(mode);
+              return (
+                <Link
+                  key={mode}
+                  to="/quizzes/$mode"
+                  params={{ mode }}
+                  className="flex items-center justify-between border border-border bg-card p-5 transition-colors hover:border-primary/60"
+                >
+                  <div>
+                    <p className="text-sm text-foreground">{MODE_LABELS[mode]}</p>
+                    <p className="mt-1 font-mono text-[10px] uppercase tracking-[0.14em] text-muted-foreground">
+                      {best === null ? "Not played" : "Personal best"}
+                    </p>
+                  </div>
+                  <p className="font-heading text-2xl text-primary">
+                    {best === null ? "—" : `${best}%`}
+                  </p>
+                </Link>
+              );
+            })}
+          </div>
+        </div>
+
+        <div className="mt-12">
+          <h2 className="text-xl text-foreground">All rounds</h2>
+          {results === null && (
+            <p className="mt-4 text-sm text-muted-foreground">Loading your record…</p>
+          )}
+          {results && rounds.length === 0 && (
+            <div className="mt-4 border border-border bg-card p-8 text-center">
+              <p className="text-sm text-muted-foreground">
+                No rounds yet. A drill takes about two minutes.
+              </p>
+              <Link
+                to="/quizzes"
+                className="mt-5 inline-flex h-10 items-center border border-primary bg-primary px-5 font-display text-[11px] font-semibold uppercase tracking-[0.16em] text-primary-foreground"
+              >
+                Start a drill
+              </Link>
+            </div>
+          )}
+          {rounds.length > 0 && (
+            <div className="mt-4 overflow-x-auto border border-border">
+              <table className="w-full min-w-[520px] border-collapse text-sm">
+                <thead>
+                  <tr className="border-b border-border bg-card/60 text-left">
+                    <th className="px-4 py-3 font-mono text-[10px] font-normal uppercase tracking-[0.16em] text-muted-foreground">
+                      Drill
+                    </th>
+                    <th className="px-4 py-3 font-mono text-[10px] font-normal uppercase tracking-[0.16em] text-muted-foreground">
+                      Score
+                    </th>
+                    <th className="px-4 py-3 font-mono text-[10px] font-normal uppercase tracking-[0.16em] text-muted-foreground">
+                      Time
+                    </th>
+                    <th className="px-4 py-3 font-mono text-[10px] font-normal uppercase tracking-[0.16em] text-muted-foreground">
+                      Date
+                    </th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {rounds.map((result) => (
+                    <tr key={result.id} className="border-b border-border last:border-0">
+                      <td className="px-4 py-3 text-foreground/90">
+                        {MODE_LABELS[result.mode] || result.mode}
+                      </td>
+                      <td className="px-4 py-3 text-foreground/90">
+                        {result.score} / {result.total}
+                      </td>
+                      <td className="px-4 py-3 font-mono text-xs text-muted-foreground">
+                        {result.duration_seconds ? `${result.duration_seconds}s` : "—"}
+                      </td>
+                      <td className="px-4 py-3 font-mono text-xs text-muted-foreground">
+                        {result.created_date
+                          ? new Date(result.created_date).toLocaleDateString("en-GB", {
+                              day: "2-digit",
+                              month: "short",
+                              year: "numeric",
+                              timeZone: "UTC",
+                            })
+                          : "—"}
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          )}
+        </div>
+      </section>
+    </div>
+  );
+}
+
+
+/* ==================== src/routes/login.jsx ==================== */
+
+import { createFileRoute } from "@tanstack/react-router";
+import { LoginPage } from "@/components/auth/LoginPage";
+
+export const Route = createFileRoute("/login")({
+  ssr: false,
+  component: LoginPage,
+});
+
+
+/* ==================== src/routes/register.jsx ==================== */
+
+import { createFileRoute } from "@tanstack/react-router";
+import { RegisterPage } from "@/components/auth/RegisterPage";
+
+export const Route = createFileRoute("/register")({
+  ssr: false,
+  component: RegisterPage,
+});
+
+
+/* ==================== src/routes/forgot-password.jsx ==================== */
+
+import { createFileRoute } from "@tanstack/react-router";
+import { ForgotPasswordPage } from "@/components/auth/ForgotPasswordPage";
+
+export const Route = createFileRoute("/forgot-password")({
+  ssr: false,
+  component: ForgotPasswordPage,
+});
+
+
+/* ==================== src/routes/reset-password.jsx ==================== */
+
+import { createFileRoute } from "@tanstack/react-router";
+import { ResetPasswordPage } from "@/components/auth/ResetPasswordPage";
+
+export const Route = createFileRoute("/reset-password")({
+  ssr: false,
+  component: ResetPasswordPage,
+});
+
+
+/* ==================== src/routes/mfa.jsx ==================== */
+
+import { createFileRoute } from "@tanstack/react-router";
+import { MfaPage } from "@/components/auth/MfaPage";
+
+export const Route = createFileRoute("/mfa")({
+  ssr: false,
+  component: MfaPage,
+});
+
+
+/* ==================== src/components/SiteLayout.jsx ==================== */
+
+import { Outlet } from "@tanstack/react-router";
+import SiteHeader from "@/components/SiteHeader";
+import SiteFooter from "@/components/SiteFooter";
+
+export default function SiteLayout() {
+  return (
+    <div className="flex min-h-screen flex-col bg-background">
+      <SiteHeader />
+      <main className="flex-1">
+        <Outlet />
+      </main>
+      <SiteFooter />
+    </div>
+  );
+}
+
+
+/* ==================== src/components/SiteHeader.jsx ==================== */
+
+import { useState } from "react";
+import { Link } from "@tanstack/react-router";
+import { Compass, LogOut, Menu, UserRound } from "lucide-react";
+import { useAuth } from "@/lib/AuthContext";
+import { Button } from "@/components/ui/button";
+import {
+  Sheet,
+  SheetContent,
+  SheetHeader,
+  SheetTitle,
+  SheetTrigger,
+} from "@/components/ui/sheet";
+
+const NAV = [
+  { to: "/countries", label: "Atlas" },
+  { to: "/flags", label: "Flags" },
+  { to: "/history", label: "Timeline" },
+  { to: "/quizzes", label: "Quizzes" },
+];
+
+export default function SiteHeader() {
+  const { user, isAuthenticated, isLoadingAuth, navigateToLogin, logout } = useAuth();
+  const [open, setOpen] = useState(false);
+
+  return (
+    <header className="sticky top-0 z-40 border-b border-border bg-background/90 backdrop-blur-md">
+      <div className="container-page flex h-16 items-center justify-between gap-4">
+        <Link to="/" className="flex items-center gap-2.5">
+          <Compass className="h-5 w-5 text-primary" aria-hidden="true" />
+          <span className="font-display text-[13px] font-semibold uppercase tracking-[0.24em] text-foreground">
+            Terra Chrona
+          </span>
+        </Link>
+
+        <nav className="hidden items-center gap-1 md:flex" aria-label="Main">
+          {NAV.map((item) => (
+            <Link
+              key={item.to}
+              to={item.to}
+              className="px-3 py-2 font-display text-[13px] uppercase tracking-[0.14em] text-muted-foreground transition-colors hover:text-foreground"
+              activeProps={{ className: "text-primary" }}
+            >
+              {item.label}
+            </Link>
+          ))}
+        </nav>
+
+        <div className="flex items-center gap-2">
+          {!isLoadingAuth && !isAuthenticated && (
+            <Button
+              variant="outline"
+              size="sm"
+              className="hidden border-primary/60 text-primary hover:bg-primary hover:text-primary-foreground sm:inline-flex"
+              onClick={() => navigateToLogin()}
+            >
+              Sign in
+            </Button>
+          )}
+          {!isLoadingAuth && isAuthenticated && (
+            <div className="hidden items-center gap-2 sm:flex">
+              <Link
+                to="/progress"
+                className="flex items-center gap-2 border border-border px-3 py-1.5 text-xs text-foreground/80 transition-colors hover:border-primary/60 hover:text-primary"
+              >
+                <UserRound className="h-3.5 w-3.5" aria-hidden="true" />
+                <span className="max-w-[120px] truncate">
+                  {user?.full_name || user?.email || "My progress"}
+                </span>
+              </Link>
+              <button
+                type="button"
+                onClick={() => logout()}
+                className="p-2 text-muted-foreground transition-colors hover:text-primary"
+                aria-label="Sign out"
+              >
+                <LogOut className="h-4 w-4" />
+              </button>
+            </div>
+          )}
+
+          <Sheet open={open} onOpenChange={setOpen}>
+            <SheetTrigger asChild>
+              <Button variant="ghost" size="icon" className="md:hidden" aria-label="Open menu">
+                <Menu className="h-5 w-5" />
+              </Button>
+            </SheetTrigger>
+            <SheetContent side="right" className="w-72 border-border bg-card">
+              <SheetHeader>
+                <SheetTitle className="text-left font-display text-sm uppercase tracking-[0.22em]">
+                  Terra Chrona
+                </SheetTitle>
+              </SheetHeader>
+              <nav className="mt-6 flex flex-col" aria-label="Mobile">
+                {NAV.map((item) => (
+                  <Link
+                    key={item.to}
+                    to={item.to}
+                    onClick={() => setOpen(false)}
+                    className="border-b border-border py-3 font-display text-sm uppercase tracking-[0.12em] text-foreground/80"
+                  >
+                    {item.label}
+                  </Link>
+                ))}
+                <Link
+                  to="/progress"
+                  onClick={() => setOpen(false)}
+                  className="border-b border-border py-3 font-display text-sm uppercase tracking-[0.12em] text-foreground/80"
+                >
+                  My progress
+                </Link>
+              </nav>
+              <div className="mt-6">
+                {isAuthenticated ? (
+                  <Button variant="outline" className="w-full" onClick={() => logout()}>
+                    Sign out
+                  </Button>
+                ) : (
+                  <Button className="w-full" onClick={() => navigateToLogin()}>
+                    Sign in
+                  </Button>
+                )}
+              </div>
+            </SheetContent>
+          </Sheet>
+        </div>
+      </div>
+    </header>
+  );
+}
+
+
+/* ==================== src/components/SiteFooter.jsx ==================== */
+
+import { Link } from "@tanstack/react-router";
+import { Compass, Globe2, Landmark, Map, ScrollText, Shapes } from "lucide-react";
+
+const COLUMNS = [
+  {
+    title: "Space",
+    links: [
+      { to: "/countries", label: "All countries" },
+      { to: "/flags", label: "Flag vault" },
+    ],
+  },
+  {
+    title: "Time",
+    links: [
+      { to: "/history", label: "Timelines" },
+      { to: "/quizzes", label: "Quizzes" },
+    ],
+  },
+];
+
+const ICONS = [Globe2, Map, Landmark, Shapes, ScrollText];
+
+export default function SiteFooter() {
+  return (
+    <footer className="border-t border-border bg-card/60">
+      <div className="container-page py-14">
+        <div className="grid gap-10 md:grid-cols-[1.6fr_1fr_1fr]">
+          <div>
+            <Link to="/" className="inline-flex items-center gap-2.5">
+              <Compass className="h-5 w-5 text-primary" aria-hidden="true" />
+              <span className="font-display text-sm font-semibold uppercase tracking-[0.24em] text-foreground">
+                Terra Chrona
+              </span>
+            </Link>
+            <p className="mt-4 max-w-sm text-sm leading-relaxed text-muted-foreground">
+              An atlas of every country, capital and flag, set against the eras that shaped
+              them. Free to browse, free to drill.
+            </p>
+            <div className="mt-6 flex gap-3" aria-hidden="true">
+              {ICONS.map((Icon, i) => (
+                <span
+                  key={i}
+                  className="flex h-8 w-8 items-center justify-center border border-border text-muted-foreground"
+                >
+                  <Icon className="h-3.5 w-3.5" />
+                </span>
+              ))}
+            </div>
+          </div>
+
+          {COLUMNS.map((column) => (
+            <div key={column.title}>
+              <h3 className="rule-label mb-4">{column.title}</h3>
+              <ul className="space-y-3">
+                {column.links.map((link) => (
+                  <li key={link.to}>
+                    <Link
+                      to={link.to}
+                      className="text-sm text-foreground/80 transition-colors hover:text-primary"
+                    >
+                      {link.label}
+                    </Link>
+                  </li>
+                ))}
+              </ul>
+            </div>
+          ))}
+        </div>
+
+        <div className="mt-12 flex flex-col gap-3 border-t border-border pt-6 text-xs text-muted-foreground sm:flex-row sm:items-center sm:justify-between">
+          <p>
+            Compiled for the obsessively curious.{" "}
+            <Link to="/source" className="text-foreground/70 underline decoration-border underline-offset-4 transition-colors hover:text-primary">
+              Source code
+            </Link>
+          </p>
+          <p className="font-mono uppercase tracking-[0.18em]">48°51′N 2°21′E · GMT+0</p>
+        </div>
+      </div>
+    </footer>
+  );
+}
+
+
+/* ==================== src/components/Hero.jsx ==================== */
+
+import { useEffect, useState } from "react";
+import { Link } from "@tanstack/react-router";
+import { Image } from "@/components/ui/image";
+
+const HEADLINE = "The whole world, and all of its time";
+
+const heroCss = `
+.hero-section {
+  --hero-cta-hover: hsl(var(--secondary));
+  --hero-wave: hsl(var(--primary));
+  --hero-stagger: clamp(0px, 8cqi - 40px, 72px);
+  position: relative;
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+}
+.hero-inner {
+  container-type: inline-size;
+  width: 100%;
+  padding-top: clamp(48px, 7cqi, 92px);
+  display: flex;
+  flex-direction: column;
+}
+.hero-head {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  text-align: center;
+}
+.hero-title {
+  margin: 0;
+  max-width: 900px;
+  font-weight: 400;
+  font-size: clamp(2.5rem, 1.5rem + 4.4cqi, 4.5rem);
+  line-height: 1.08;
+  letter-spacing: -0.015em;
+  color: hsl(var(--foreground));
+}
+.hero-sub {
+  margin: clamp(16px, 2cqi, 22px) 0 0;
+  max-width: 460px;
+  font-size: 16px;
+  line-height: 1.6;
+  color: hsl(var(--muted-foreground));
+}
+.hero-btn {
+  display: inline-flex;
+  align-items: stretch;
+  margin-top: clamp(24px, 3cqi, 32px);
+  height: 40px;
+  background: hsl(var(--primary));
+  border: 1px solid hsl(var(--primary));
+  border-radius: 2px;
+  color: hsl(var(--primary-foreground));
+  text-decoration: none;
+  overflow: hidden;
+  transition: background-color .25s ease, color .25s ease, border-color .25s ease;
+}
+.hero-btn-label {
+  display: inline-flex;
+  align-items: center;
+  padding: 0 16px;
+  font-family: var(--font-display);
+  font-size: 13px;
+  font-weight: 600;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  white-space: nowrap;
+}
+.hero-btn-divider {
+  width: 1px;
+  align-self: stretch;
+  background: hsl(var(--primary-foreground) / 0.35);
+}
+.hero-btn-arrow {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 42px;
+}
+.hero-btn-arrow svg { width: 17px; height: 17px; }
+.hero-btn:hover {
+  background: hsl(var(--secondary));
+  color: hsl(var(--foreground));
+  border-color: hsl(var(--secondary));
+}
+.hero-btn:hover .hero-btn-divider { background: hsl(var(--foreground) / 0.4); }
+.hero-btn:focus-visible { outline: 2px solid hsl(var(--primary)); outline-offset: 3px; }
+
+.hero-gallery {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  grid-template-rows: 100%;
+  gap: 14px;
+  margin-top: clamp(32px, 4cqi, 52px);
+  height: min(34cqi, 420px);
+  overflow: hidden;
+}
+.hero-photo { align-self: stretch; min-width: 0; min-height: 0; }
+.hero-photo--2 { transform: translateY(var(--hero-stagger)); }
+.hero-photo-frame {
+  position: relative;
+  margin: 0;
+  width: 100%;
+  height: calc(100% + clamp(40px, 9cqi, 130px));
+  border-radius: 3px 3px 0 0;
+  overflow: hidden;
+  background: hsl(var(--card));
+  border: 1px solid hsl(var(--border));
+  border-bottom: 0;
+}
+.hero-img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  object-position: center top;
+  display: block;
+  filter: saturate(0.75) contrast(1.05);
+}
+
+@keyframes hero-rise {
+  from { opacity: 0; transform: translateY(1.4rem); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+@keyframes hero-rise-photo {
+  from { opacity: 0; transform: translateY(2.5rem); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+.hero-anim .hero-title,
+.hero-anim .hero-sub,
+.hero-anim .hero-btn {
+  opacity: 0;
+  animation: hero-rise .7s cubic-bezier(.2, .7, .2, 1) forwards;
+}
+.hero-anim .hero-title { animation-delay: .05s; }
+.hero-anim .hero-sub   { animation-delay: .18s; }
+.hero-anim .hero-btn   { animation-delay: .30s; }
+.hero-anim .hero-photo-frame {
+  opacity: 0;
+  animation: hero-rise-photo .8s cubic-bezier(.2, .7, .2, 1) forwards;
+}
+.hero-anim .hero-photo--1 .hero-photo-frame { animation-delay: .42s; }
+.hero-anim .hero-photo--2 .hero-photo-frame { animation-delay: .54s; }
+.hero-anim .hero-photo--3 .hero-photo-frame { animation-delay: .66s; }
+
+@keyframes hero-letter-wave {
+  0%, 18%, 100% { color: hsl(var(--foreground)); }
+  9%            { color: var(--hero-wave); }
+}
+.hero-letter {
+  animation: hero-letter-wave 4.5s linear infinite;
+  animation-delay: calc(var(--hero-i, 0) * 0.09s);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .hero-anim .hero-title,
+  .hero-anim .hero-sub,
+  .hero-anim .hero-btn,
+  .hero-anim .hero-photo-frame { opacity: 1; animation: none; }
+  .hero-letter { animation: none; color: hsl(var(--foreground)); }
+}
+`;
+
+const PHOTOS = [
+  {
+    src: "https://media.base44.com/images/public/6b05b83ed47864e5472a1bab/bfa9d28dc02759d8470ad3b4d47019ff_generated_image.png",
+    alt: "Aerial view of a braided river delta cutting through dark silt",
+  },
+  {
+    src: "https://media.base44.com/images/public/6b05b83ed47864e5472a1bab/48b132d33ef5b125afbeb3f154f0f37f_generated_image.png",
+    alt: "A mountain range rendered as a clay relief model",
+  },
+  {
+    src: "https://media.base44.com/images/public/6b05b83ed47864e5472a1bab/971f73848962a8bebc4e6c6223277b9f_generated_image.png",
+    alt: "Weathered parchment of an old nautical chart",
+  },
+];
+
+function RippledTitle({ text }) {
+  let index = 0;
+  return text.split("").map((char, i) => {
+    if (char === " ") return " ";
+    const n = index;
+    index += 1;
+    return (
+      <span key={i} className="hero-letter" style={{ "--hero-i": n }}>
+        {char}
+      </span>
+    );
+  });
+}
+
+export default function Hero() {
+  const [animate, setAnimate] = useState(false);
+
+  useEffect(() => {
+    const id = requestAnimationFrame(() => setAnimate(true));
+    return () => cancelAnimationFrame(id);
+  }, []);
+
+  return (
+    <section className={`hero-section ${animate ? "hero-anim" : ""}`} aria-label="Introduction">
+      <style>{heroCss}</style>
+      <div className="hero-inner container-page">
+        <div className="hero-head">
+          <p className="eyebrow mb-5">An archive of the earth and its centuries</p>
+          <h1 className="hero-title">
+            <RippledTitle text={HEADLINE} />
+          </h1>
+          <p className="hero-sub">
+            Every sovereign state, every capital, every flag, and seven thousand years of
+            borders, empires and turning points. Browse it, or test yourself against it.
+          </p>
+          <Link to="/countries" className="hero-btn">
+            <span className="hero-btn-label">Enter the atlas</span>
+            <span className="hero-btn-divider" aria-hidden="true" />
+            <span className="hero-btn-arrow" aria-hidden="true">
+              <svg viewBox="0 0 17.4 17.4" fill="none" xmlns="http://www.w3.org/2000/svg">
+                <path
+                  d="M11.3517 1.52148L14.1053 4.6806C15.9753 6.82906 15.9753 10.3126 14.1053 12.4611L11.3517 15.6202"
+                  stroke="currentColor"
+                  strokeWidth="1.2"
+                  strokeLinecap="round"
+                  strokeMiterlimit="10"
+                  opacity="0.97"
+                />
+                <path
+                  d="M15.5039 8.62988L1.07414 8.62988"
+                  stroke="currentColor"
+                  strokeWidth="1.2"
+                  strokeLinecap="round"
+                  strokeMiterlimit="10"
+                />
+              </svg>
+            </span>
+          </Link>
+        </div>
+
+        <div className="hero-gallery">
+          {PHOTOS.map((photo, i) => (
+            <div key={photo.src} className={`hero-photo hero-photo--${i + 1}`}>
+              <figure className="hero-photo-frame">
+                <Image
+                  src={photo.src}
+                  alt={photo.alt}
+                  fittingType="fill"
+                  className="hero-img"
+                />
+              </figure>
+            </div>
+          ))}
+        </div>
+      </div>
+    </section>
+  );
+}
+
+
+/* ==================== src/components/PageHeader.jsx ==================== */
+
+export default function PageHeader({ eyebrow, title, description, children }) {
+  return (
+    <div className="border-b border-border bg-card/40">
+      <div className="container-page py-12 sm:py-16">
+        {eyebrow && <p className="eyebrow">{eyebrow}</p>}
+        <h1 className="mt-4 max-w-3xl text-4xl leading-[1.05] text-foreground sm:text-5xl">
+          {title}
+        </h1>
+        {description && (
+          <p className="mt-5 max-w-2xl text-[15px] leading-relaxed text-muted-foreground">
+            {description}
+          </p>
+        )}
+        {children}
+      </div>
+    </div>
+  );
+}
+
+
+/* ==================== src/components/CountryCard.jsx ==================== */
+
+import { Link } from "@tanstack/react-router";
+import { Image } from "@/components/ui/image";
+import { flagUrl } from "@/data/countries";
+
+export default function CountryCard({ country }) {
+  return (
+    <Link
+      to="/countries/$code"
+      params={{ code: country.code }}
+      className="group flex items-center gap-4 border border-border bg-card p-4 transition-colors hover:border-primary/60 hover:bg-card/70"
+    >
+      <div className="h-12 w-[68px] shrink-0 overflow-hidden border border-border bg-background">
+        <Image
+          src={flagUrl(country.code, 320)}
+          alt={`Flag of ${country.name}`}
+          className="h-full w-full"
+          fittingType="fill"
+        />
+      </div>
+      <div className="min-w-0">
+        <p className="truncate text-[15px] leading-tight text-foreground transition-colors group-hover:text-primary">
+          {country.name}
+        </p>
+        <p className="mt-0.5 truncate text-xs text-muted-foreground">{country.capital}</p>
+        <p className="mt-1.5 truncate font-mono text-[10px] uppercase tracking-[0.12em] text-muted-foreground/80">
+          {country.subregion}
+        </p>
+      </div>
+    </Link>
+  );
+}
+
+
+/* ==================== src/components/quiz/QuizRunner.jsx ==================== */
+
+import { useEffect, useMemo, useState } from "react";
+import { Link } from "@tanstack/react-router";
+import { ArrowRight, Check, RotateCcw, X } from "lucide-react";
+import { Image } from "@/components/ui/image";
+import { base44 } from "@/api/base44Client";
+import { useAuth } from "@/lib/AuthContext";
+import { buildQuiz, QUIZ_MODES } from "@/lib/quiz";
+
+export default function QuizRunner({ mode }) {
+  const meta = QUIZ_MODES.find((item) => item.slug === mode);
+  const { isAuthenticated } = useAuth();
+  const [round, setRound] = useState(0);
+  const questions = useMemo(() => buildQuiz(mode, 10), [mode, round]);
+  const [index, setIndex] = useState(0);
+  const [selected, setSelected] = useState(null);
+  const [answers, setAnswers] = useState([]);
+  const [saved, setSaved] = useState("idle");
+  const [startedAt, setStartedAt] = useState(() => Date.now());
+
+  const current = questions[index];
+  const finished = index >= questions.length;
+  const score = answers.filter((answer) => answer.correct).length;
+
+  const restart = () => {
+    setRound((value) => value + 1);
+    setIndex(0);
+    setSelected(null);
+    setAnswers([]);
+    setSaved("idle");
+    setStartedAt(Date.now());
+  };
+
+  useEffect(() => {
+    if (!finished || saved !== "idle" || !isAuthenticated) return;
+    setSaved("saving");
+    base44.entities.QuizResult.create({
+      mode,
+      score,
+      total: questions.length,
+      duration_seconds: Math.round((Date.now() - startedAt) / 1000),
+      missed: answers.filter((answer) => !answer.correct).map((answer) => answer.answer),
+    })
+      .then(() => setSaved("saved"))
+      .catch(() => setSaved("failed"));
+  }, [finished, saved, isAuthenticated, mode, score, questions.length, answers, startedAt]);
+
+  const choose = (option) => {
+    if (selected) return;
+    setSelected(option);
+    setAnswers((prev) => [
+      ...prev,
+      { id: current.id, correct: option === current.answer, answer: current.answer, chosen: option },
+    ]);
+  };
+
+  const advance = () => {
+    setSelected(null);
+    setIndex((value) => value + 1);
+  };
+
+  if (!meta) return null;
+
+  if (finished) {
+    const percent = Math.round((score / questions.length) * 100);
+    const missed = answers.filter((answer) => !answer.correct);
+    return (
+      <div className="container-page py-12 sm:py-16">
+        <div className="mx-auto max-w-2xl border border-border bg-card p-8 sm:p-10">
+          <p className="eyebrow">{meta.title} · round complete</p>
+          <div className="mt-6 flex items-end gap-3">
+            <p className="font-heading text-6xl leading-none text-foreground">{score}</p>
+            <p className="pb-2 font-mono text-sm text-muted-foreground">/ {questions.length}</p>
+          </div>
+          <p className="mt-3 text-sm text-muted-foreground">
+            {percent}% correct ·{" "}
+            {percent === 100
+              ? "a flawless round."
+              : percent >= 70
+                ? "solid recall."
+                : percent >= 40
+                  ? "the atlas has more to give."
+                  : "back to the atlas with you."}
+          </p>
+
+          {missed.length > 0 && (
+            <div className="mt-8 border-t border-border pt-6">
+              <p className="rule-label mb-3">Missed</p>
+              <ul className="space-y-2">
+                {missed.slice(0, 6).map((answer, i) => (
+                  <li key={`${answer.id}-${i}`} className="flex items-start gap-2 text-sm">
+                    <X className="mt-0.5 h-3.5 w-3.5 shrink-0 text-destructive" aria-hidden="true" />
+                    <span className="text-foreground/85">{answer.answer}</span>
+                  </li>
+                ))}
+              </ul>
+            </div>
+          )}
+
+          <p className="mt-6 font-mono text-[11px] uppercase tracking-[0.16em] text-muted-foreground">
+            {!isAuthenticated
+              ? "Sign in to keep a record of this score."
+              : saved === "saved"
+                ? "Saved to your record."
+                : saved === "failed"
+                  ? "Score could not be saved."
+                  : "Saving to your record…"}
+          </p>
+
+          <div className="mt-8 flex flex-wrap gap-3">
+            <button
+              type="button"
+              onClick={restart}
+              className="inline-flex h-10 items-center gap-2 border border-primary bg-primary px-5 font-display text-[11px] font-semibold uppercase tracking-[0.16em] text-primary-foreground transition-colors hover:bg-secondary hover:border-secondary hover:text-foreground"
+            >
+              <RotateCcw className="h-3.5 w-3.5" aria-hidden="true" /> Play again
+            </button>
+            <Link
+              to="/quizzes"
+              className="inline-flex h-10 items-center border border-border px-5 font-display text-[11px] font-semibold uppercase tracking-[0.16em] text-foreground transition-colors hover:border-primary hover:text-primary"
+            >
+              Other drills
+            </Link>
+            <Link
+              to="/progress"
+              className="inline-flex h-10 items-center px-2 font-display text-[11px] font-semibold uppercase tracking-[0.16em] text-muted-foreground transition-colors hover:text-primary"
+            >
+              My progress
+            </Link>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  return (
+    <div className="container-page py-10 sm:py-14">
+      <div className="mx-auto max-w-2xl">
+        <div className="flex items-center justify-between">
+          <p className="rule-label">
+            Question {index + 1} of {questions.length}
+          </p>
+          <p className="rule-label">{meta.title}</p>
+        </div>
+        <div className="mt-3 h-1 w-full bg-muted">
+          <div
+            className="h-full bg-primary transition-all duration-300"
+            style={{ width: `${(index / questions.length) * 100}%` }}
+          />
+        </div>
+
+        <div className="mt-8 border border-border bg-card p-6 sm:p-8">
+          <p className="rule-label">{current.detail}</p>
+          <h2 className="mt-3 text-2xl leading-snug text-foreground sm:text-[28px]">
+            {current.prompt}
+          </h2>
+
+          {current.image && (
+            <div className="mt-6 border border-border bg-background p-4">
+              <Image
+                src={current.image}
+                alt="Flag to identify"
+                fittingType="fit"
+                className="mx-auto h-32 w-full max-w-[280px]"
+              />
+            </div>
+          )}
+
+          <div className="mt-6 grid gap-2.5 sm:grid-cols-2">
+            {current.options.map((option) => {
+              const isCorrect = option === current.answer;
+              const isChosen = option === selected;
+              let stateClass = "border-border bg-background hover:border-primary/60";
+              if (selected) {
+                if (isCorrect) stateClass = "border-primary bg-primary/10 text-foreground";
+                else if (isChosen) stateClass = "border-destructive bg-destructive/10 text-foreground";
+                else stateClass = "border-border bg-background opacity-60";
+              }
+              return (
+                <button
+                  key={option}
+                  type="button"
+                  onClick={() => choose(option)}
+                  disabled={Boolean(selected)}
+                  className={`flex items-center justify-between gap-3 border px-4 py-3 text-left text-sm transition-colors ${stateClass}`}
+                >
+                  <span>{option}</span>
+                  {selected && isCorrect && (
+                    <Check className="h-4 w-4 shrink-0 text-primary" aria-hidden="true" />
+                  )}
+                  {selected && isChosen && !isCorrect && (
+                    <X className="h-4 w-4 shrink-0 text-destructive" aria-hidden="true" />
+                  )}
+                </button>
+              );
+            })}
+          </div>
+
+          {selected && (
+            <div className="mt-6 flex flex-wrap items-center justify-between gap-3 border-t border-border pt-5">
+              <p className="text-sm text-muted-foreground">
+                {selected === current.answer ? "Correct." : `It was ${current.answer}.`}
+              </p>
+              <button
+                type="button"
+                onClick={advance}
+                className="inline-flex h-9 items-center gap-2 border border-primary bg-primary px-4 font-display text-[11px] font-semibold uppercase tracking-[0.16em] text-primary-foreground transition-colors hover:bg-secondary hover:border-secondary hover:text-foreground"
+              >
+                {index + 1 === questions.length ? "See result" : "Next"}
+                <ArrowRight className="h-3.5 w-3.5" aria-hidden="true" />
+              </button>
+            </div>
+          )}
+        </div>
+
+        <p className="mt-5 text-center text-xs text-muted-foreground">
+          Score so far: {score} of {answers.length || 0} answered
+        </p>
+      </div>
+    </div>
+  );
+}
+
+
+/* ==================== src/lib/quiz.js ==================== */
+
+import { COUNTRIES, flagUrl } from "@/data/countries";
+import { EVENTS, getEra } from "@/data/history";
+
+export const QUIZ_MODES = [
+  {
+    slug: "capitals",
+    title: "Capitals",
+    kicker: "Space",
+    blurb: "Ten countries, ten capitals. The drill that catches everyone eventually.",
+  },
+  {
+    slug: "flags",
+    title: "Flags",
+    kicker: "Vexillology",
+    blurb: "Identify ten flags from the vault, including the ones that look alike.",
+  },
+  {
+    slug: "history",
+    title: "Dates & events",
+    kicker: "Time",
+    blurb: "Given a year, pick the event that actually happened in it.",
+  },
+];
+
+export function getMode(slug) {
+  return QUIZ_MODES.find((mode) => mode.slug === slug) || null;
+}
+
+function shuffle(list) {
+  const copy = [...list];
+  for (let i = copy.length - 1; i > 0; i -= 1) {
+    const j = Math.floor(Math.random() * (i + 1));
+    [copy[i], copy[j]] = [copy[j], copy[i]];
+  }
+  return copy;
+}
+
+function buildCapitals(size) {
+  return shuffle(COUNTRIES)
+    .slice(0, size)
+    .map((country) => {
+      const distractors = shuffle(
+        COUNTRIES.filter((other) => other.code !== country.code && other.capital !== country.capital)
+      )
+        .slice(0, 3)
+        .map((other) => other.capital);
+      return {
+        id: `${country.code}-capital`,
+        prompt: `What is the capital of ${country.name}?`,
+        detail: country.subregion,
+        image: null,
+        options: shuffle([country.capital, ...distractors]),
+        answer: country.capital,
+      };
+    });
+}
+
+function buildFlags(size) {
+  return shuffle(COUNTRIES)
+    .slice(0, size)
+    .map((country) => {
+      const distractors = shuffle(COUNTRIES.filter((other) => other.code !== country.code))
+        .slice(0, 3)
+        .map((other) => other.name);
+      return {
+        id: `${country.code}-flag`,
+        prompt: "Which country flies this flag?",
+        detail: "Vexillology",
+        image: flagUrl(country.code, 640),
+        options: shuffle([country.name, ...distractors]),
+        answer: country.name,
+      };
+    });
+}
+
+function buildHistory(size) {
+  return shuffle(EVENTS)
+    .slice(0, size)
+    .map((event) => {
+      const sameEra = EVENTS.filter(
+        (other) => other.era === event.era && other.year !== event.year
+      );
+      const pool = sameEra.length >= 3 ? sameEra : EVENTS.filter((other) => other.year !== event.year);
+      const distractors = shuffle(pool)
+        .slice(0, 3)
+        .map((other) => other.title);
+      const era = getEra(event.era);
+      return {
+        id: event.id,
+        prompt: `Which of these happened in ${event.year}?`,
+        detail: era ? `${era.title} · ${event.place}` : event.place,
+        image: null,
+        options: shuffle([event.title, ...distractors]),
+        answer: event.title,
+      };
+    });
+}
+
+export function buildQuiz(mode, size = 10) {
+  if (mode === "capitals") return buildCapitals(size);
+  if (mode === "flags") return buildFlags(size);
+  if (mode === "history") return buildHistory(size);
+  return [];
+}
+
+
+/* ==================== src/data/countries/index.js ==================== */
+
+import { AFRICA } from "./africa";
+import { AMERICAS } from "./americas";
+import { ASIA } from "./asia";
+import { EUROPE } from "./europe";
+import { OCEANIA } from "./oceania";
+
+export const COUNTRIES = [...AFRICA, ...AMERICAS, ...ASIA, ...EUROPE, ...OCEANIA].sort((a, b) =>
+  a.name.localeCompare(b.name, "en")
+);
+
+export const REGIONS = ["Africa", "Americas", "Asia", "Europe", "Oceania"];
+
+export const REGION_BLURBS = {
+  Africa: "54 states across the Sahara, the Sahel, the Rift and the Cape.",
+  Americas: "35 states from the Arctic to Tierra del Fuego.",
+  Asia: "49 states from the Levant to the Pacific, home to most of humanity.",
+  Europe: "44 states on a peninsula of peninsulas, densely bordered and densely recorded.",
+  Oceania: "14 states scattered across the Pacific, from Australia to atolls a few metres high.",
+};
+
+export function flagUrl(code, width = 640) {
+  return `https://flagcdn.com/w${width}/${code.toLowerCase()}.png`;
+}
+
+export function flagEmoji(code) {
+  return code
+    .toUpperCase()
+    .replace(/./g, (char) => String.fromCodePoint(127397 + char.charCodeAt(0)));
+}
+
+export function getCountry(code) {
+  if (!code) return null;
+  return COUNTRIES.find((country) => country.code === code.toUpperCase()) || null;
+}
+
+export function regionCounts() {
+  return REGIONS.map((region) => ({
+    region,
+    count: COUNTRIES.filter((country) => country.region === region).length,
+  }));
+}
+
+export function neighbours(country, limit = 4) {
+  if (!country) return [];
+  return COUNTRIES.filter(
+    (other) => other.region === country.region && other.code !== country.code
+  ).slice(0, limit);
+}
+
+export function formatNumber(value) {
+  if (value === null || value === undefined) return "—";
+  return new Intl.NumberFormat("en-US").format(value);
+}
+
+export function formatPopulation(value) {
+  if (!value) return "—";
+  if (value >= 1000000000) return `${(value / 1000000000).toFixed(2)} billion`;
+  if (value >= 1000000) return `${(value / 1000000).toFixed(1)} million`;
+  if (value >= 1000) return `${(value / 1000).toFixed(0)},000`;
+  return formatNumber(value);
+}
+
+export function formatArea(value) {
+  if (!value) return "Under 1 km²";
+  return `${formatNumber(value)} km²`;
+}
+
+export function density(country) {
+  if (!country || !country.area) return null;
+  return Math.round(country.population / country.area);
+}
+
+
+/* ==================== src/data/countries/africa.js ==================== */
+
+// Africa — 54 sovereign states.
+export const AFRICA = [
+  { code: "DZ", name: "Algeria", capital: "Algiers", region: "Africa", subregion: "Northern Africa", population: 45600000, area: 2381741, currency: "Algerian dinar (DZD)", languages: "Arabic, Berber, French", note: "Africa's largest country by area, independent from France in 1962 after an eight-year war." },
+  { code: "AO", name: "Angola", capital: "Luanda", region: "Africa", subregion: "Middle Africa", population: 36700000, area: 1246700, currency: "Angolan kwanza (AOA)", languages: "Portuguese, Umbundu, Kimbundu", note: "Independent from Portugal in 1975, then in civil war until 2002." },
+  { code: "BJ", name: "Benin", capital: "Porto-Novo", region: "Africa", subregion: "Western Africa", population: 13700000, area: 112622, currency: "West African CFA franc (XOF)", languages: "French, Fon, Yoruba", note: "Home of the Kingdom of Dahomey, whose capital Abomey is a UNESCO site." },
+  { code: "BW", name: "Botswana", capital: "Gaborone", region: "Africa", subregion: "Southern Africa", population: 2600000, area: 581730, currency: "Botswana pula (BWP)", languages: "Setswana, English", note: "Independent in 1966; diamonds turned one of the world's poorest states into a middle-income one." },
+  { code: "BF", name: "Burkina Faso", capital: "Ouagadougou", region: "Africa", subregion: "Western Africa", population: 23000000, area: 274200, currency: "West African CFA franc (XOF)", languages: "French, Mossi, Fulfulde", note: "Renamed from Upper Volta in 1984; the name means 'land of upright people'." },
+  { code: "BI", name: "Burundi", capital: "Gitega", region: "Africa", subregion: "Eastern Africa", population: 13200000, area: 27834, currency: "Burundian franc (BIF)", languages: "Kirundi, French", note: "The political capital moved from Bujumbura to Gitega in 2019." },
+  { code: "CV", name: "Cabo Verde", capital: "Praia", region: "Africa", subregion: "Western Africa", population: 600000, area: 4033, currency: "Cape Verdean escudo (CVE)", languages: "Portuguese, Cape Verdean Creole", note: "Ten volcanic islands settled by Portugal in the 15th century; independent in 1975." },
+  { code: "CM", name: "Cameroon", capital: "Yaoundé", region: "Africa", subregion: "Middle Africa", population: 28600000, area: 475442, currency: "Central African CFA franc (XAF)", languages: "French, English, Fulfulde", note: "A German colony split between France and Britain in 1919, reunified in 1961." },
+  { code: "CF", name: "Central African Republic", capital: "Bangui", region: "Africa", subregion: "Middle Africa", population: 5700000, area: 622984, currency: "Central African CFA franc (XAF)", languages: "Sango, French", note: "Independent from France in 1960; Sango is one of the few African languages with official status." },
+  { code: "TD", name: "Chad", capital: "N'Djamena", region: "Africa", subregion: "Middle Africa", population: 18300000, area: 1284000, currency: "Central African CFA franc (XAF)", languages: "Arabic, French, Sara", note: "Named for Lake Chad, which has shrunk by roughly 90 per cent since the 1960s." },
+  { code: "KM", name: "Comoros", capital: "Moroni", region: "Africa", subregion: "Eastern Africa", population: 850000, area: 1861, currency: "Comorian franc (KMF)", languages: "Comorian, Arabic, French", note: "An archipelago in the Mozambique Channel that has seen more than 20 coups since 1975." },
+  { code: "CG", name: "Congo", capital: "Brazzaville", region: "Africa", subregion: "Middle Africa", population: 6100000, area: 342000, currency: "Central African CFA franc (XAF)", languages: "French, Kituba, Lingala", note: "Formerly French Congo; Brazzaville was the capital of Free France from 1940 to 1943." },
+  { code: "CD", name: "DR Congo", capital: "Kinshasa", region: "Africa", subregion: "Middle Africa", population: 102000000, area: 2344858, currency: "Congolese franc (CDF)", languages: "French, Lingala, Swahili, Tshiluba, Kikongo", note: "The second-largest country in Africa; the Congo basin holds the world's second-largest rainforest." },
+  { code: "CI", name: "Côte d'Ivoire", capital: "Yamoussoukro", region: "Africa", subregion: "Western Africa", population: 28900000, area: 322463, currency: "West African CFA franc (XOF)", languages: "French, Baoulé, Dioula", note: "The capital moved inland to Yamoussoukro in 1983; Abidjan remains the economic centre." },
+  { code: "DJ", name: "Djibouti", capital: "Djibouti", region: "Africa", subregion: "Eastern Africa", population: 1100000, area: 23200, currency: "Djiboutian franc (DJF)", languages: "French, Arabic, Somali, Afar", note: "Sits at the Bab-el-Mandeb strait, the gateway between the Red Sea and the Gulf of Aden." },
+  { code: "EG", name: "Egypt", capital: "Cairo", region: "Africa", subregion: "Northern Africa", population: 112000000, area: 1001449, currency: "Egyptian pound (EGP)", languages: "Arabic, Coptic (liturgical)", note: "One of the oldest continuous states on earth; the Suez Canal opened in 1869." },
+  { code: "GQ", name: "Equatorial Guinea", capital: "Malabo", region: "Africa", subregion: "Middle Africa", population: 1700000, area: 28051, currency: "Central African CFA franc (XAF)", languages: "Spanish, French, Portuguese", note: "The only African country with Spanish as an official language; oil discovered in 1996." },
+  { code: "ER", name: "Eritrea", capital: "Asmara", region: "Africa", subregion: "Eastern Africa", population: 3700000, area: 117600, currency: "Eritrean nakfa (ERN)", languages: "Tigrinya, Arabic, English", note: "Independent from Ethiopia in 1993 after a 30-year war; Asmara is a Modernist UNESCO city." },
+  { code: "SZ", name: "Eswatini", capital: "Mbabane", region: "Africa", subregion: "Southern Africa", population: 1200000, area: 17364, currency: "Swazi lilangeni (SZL)", languages: "Swazi, English", note: "Renamed from Swaziland in 2018; one of the world's last absolute monarchies." },
+  { code: "ET", name: "Ethiopia", capital: "Addis Ababa", region: "Africa", subregion: "Eastern Africa", population: 126000000, area: 1104300, currency: "Ethiopian birr (ETB)", languages: "Amharic, Oromo, Tigrinya", note: "Never colonised; the rock-hewn churches of Lalibela and the Aksum obelisks date to late antiquity." },
+  { code: "GA", name: "Gabon", capital: "Libreville", region: "Africa", subregion: "Middle Africa", population: 2400000, area: 267667, currency: "Central African CFA franc (XAF)", languages: "French, Fang", note: "Nearly 90 per cent forest; Libreville was founded in 1849 by freed slaves." },
+  { code: "GM", name: "Gambia", capital: "Banjul", region: "Africa", subregion: "Western Africa", population: 2800000, area: 11295, currency: "Gambian dalasi (GMD)", languages: "English, Mandinka, Wolof", note: "Mainland Africa's smallest country, a 50 km-wide strip along the Gambia River." },
+  { code: "GH", name: "Ghana", capital: "Accra", region: "Africa", subregion: "Western Africa", population: 34000000, area: 238533, currency: "Ghanaian cedi (GHS)", languages: "English, Akan, Ewe", note: "Named after the medieval Ghana Empire; the first sub-Saharan colony to gain independence, in 1957." },
+  { code: "GN", name: "Guinea", capital: "Conakry", region: "Africa", subregion: "Western Africa", population: 14200000, area: 245857, currency: "Guinean franc (GNF)", languages: "French, Fulfulde, Malinké", note: "Independence in 1958 made it the first French African colony to refuse the French Community." },
+  { code: "GW", name: "Guinea-Bissau", capital: "Bissau", region: "Africa", subregion: "Western Africa", population: 2200000, area: 36125, currency: "West African CFA franc (XOF)", languages: "Portuguese, Guinea-Bissau Creole", note: "Independent from Portugal in 1974 after a decade of guerrilla war." },
+  { code: "KE", name: "Kenya", capital: "Nairobi", region: "Africa", subregion: "Eastern Africa", population: 55000000, area: 580367, currency: "Kenyan shilling (KES)", languages: "Swahili, English", note: "Independent in 1963; the Great Rift Valley cuts through the country from north to south." },
+  { code: "LS", name: "Lesotho", capital: "Maseru", region: "Africa", subregion: "Southern Africa", population: 2300000, area: 30355, currency: "Lesotho loti (LSL)", languages: "Sesotho, English", note: "Entirely surrounded by South Africa and the only country wholly above 1,000 metres." },
+  { code: "LR", name: "Liberia", capital: "Monrovia", region: "Africa", subregion: "Western Africa", population: 5400000, area: 111369, currency: "Liberian dollar (LRD)", languages: "English, Kpelle", note: "Founded in 1822 by freed African Americans; Africa's oldest republic, declared in 1847." },
+  { code: "LY", name: "Libya", capital: "Tripoli", region: "Africa", subregion: "Northern Africa", population: 6900000, area: 1759540, currency: "Libyan dinar (LYD)", languages: "Arabic, Berber", note: "Three historic provinces — Tripolitania, Cyrenaica, Fezzan — unified under Italian rule in 1934." },
+  { code: "MG", name: "Madagascar", capital: "Antananarivo", region: "Africa", subregion: "Eastern Africa", population: 30000000, area: 587041, currency: "Malagasy ariary (MGA)", languages: "Malagasy, French", note: "Settled from Borneo as well as Africa; around 90 per cent of its wildlife is found nowhere else." },
+  { code: "MW", name: "Malawi", capital: "Lilongwe", region: "Africa", subregion: "Eastern Africa", population: 20900000, area: 118484, currency: "Malawian kwacha (MWK)", languages: "Chichewa, English", note: "Lake Malawi holds more fish species than any other lake in the world." },
+  { code: "ML", name: "Mali", capital: "Bamako", region: "Africa", subregion: "Western Africa", population: 23000000, area: 1240192, currency: "West African CFA franc (XOF)", languages: "French, Bambara", note: "The Mali Empire's Timbuktu was a centre of scholarship with libraries of thousands of manuscripts." },
+  { code: "MR", name: "Mauritania", capital: "Nouakchott", region: "Africa", subregion: "Western Africa", population: 4900000, area: 1030700, currency: "Mauritanian ouguiya (MRU)", languages: "Arabic, Pulaar, Wolof", note: "Chinguetti was a medieval caravan stop and one of the holy cities of the Sahara." },
+  { code: "MU", name: "Mauritius", capital: "Port Louis", region: "Africa", subregion: "Eastern Africa", population: 1300000, area: 2040, currency: "Mauritian rupee (MUR)", languages: "Mauritian Creole, English, French", note: "Independent in 1968; the dodo lived here and was extinct by the 1680s." },
+  { code: "MA", name: "Morocco", capital: "Rabat", region: "Africa", subregion: "Northern Africa", population: 37800000, area: 446550, currency: "Moroccan dirham (MAD)", languages: "Arabic, Berber, French", note: "The only African monarchy outside Eswatini and Lesotho; Tangier has been a port since Phoenician times." },
+  { code: "MZ", name: "Mozambique", capital: "Maputo", region: "Africa", subregion: "Eastern Africa", population: 33000000, area: 801590, currency: "Mozambican metical (MZN)", languages: "Portuguese, Makhuwa, Sena", note: "Independent in 1975; the island of Mozambique was a Portuguese trading post from 1507." },
+  { code: "NA", name: "Namibia", capital: "Windhoek", region: "Africa", subregion: "Southern Africa", population: 2600000, area: 825615, currency: "Namibian dollar (NAD)", languages: "English, Oshiwambo, Afrikaans", note: "Independent in 1990; the Namib desert is thought to be the oldest in the world." },
+  { code: "NE", name: "Niger", capital: "Niamey", region: "Africa", subregion: "Western Africa", population: 26000000, area: 1267000, currency: "West African CFA franc (XOF)", languages: "French, Hausa, Zarma", note: "Named for the Niger River; the Agadez Sultanate ruled trans-Saharan trade for centuries." },
+  { code: "NG", name: "Nigeria", capital: "Abuja", region: "Africa", subregion: "Western Africa", population: 223000000, area: 923768, currency: "Nigerian naira (NGN)", languages: "English, Hausa, Yoruba, Igbo", note: "Africa's most populous country; the capital moved from Lagos to Abuja in 1991." },
+  { code: "RW", name: "Rwanda", capital: "Kigali", region: "Africa", subregion: "Eastern Africa", population: 14000000, area: 26338, currency: "Rwandan franc (RWF)", languages: "Kinyarwanda, French, English, Swahili", note: "The 1994 genocide killed around 800,000 people in roughly 100 days." },
+  { code: "ST", name: "São Tomé and Príncipe", capital: "São Tomé", region: "Africa", subregion: "Middle Africa", population: 230000, area: 964, currency: "São Tomé dobra (STN)", languages: "Portuguese, Forro", note: "Two volcanic islands in the Gulf of Guinea, uninhabited until the Portuguese arrived in 1471." },
+  { code: "SN", name: "Senegal", capital: "Dakar", region: "Africa", subregion: "Western Africa", population: 17700000, area: 196722, currency: "West African CFA franc (XOF)", languages: "French, Wolof", note: "Gorée island, off Dakar, was a hub of the Atlantic slave trade for three centuries." },
+  { code: "SC", name: "Seychelles", capital: "Victoria", region: "Africa", subregion: "Eastern Africa", population: 100000, area: 452, currency: "Seychellois rupee (SCR)", languages: "Seychellois Creole, English, French", note: "115 granite and coral islands; independent from Britain in 1976." },
+  { code: "SL", name: "Sierra Leone", capital: "Freetown", region: "Africa", subregion: "Western Africa", population: 8600000, area: 71740, currency: "Sierra Leonean leone (SLE)", languages: "English, Krio, Mende, Temne", note: "Freetown was founded in 1792 as a settlement for freed slaves." },
+  { code: "SO", name: "Somalia", capital: "Mogadishu", region: "Africa", subregion: "Eastern Africa", population: 18000000, area: 637657, currency: "Somali shilling (SOS)", languages: "Somali, Arabic", note: "Has the longest coastline in mainland Africa, along the Gulf of Aden and Indian Ocean." },
+  { code: "ZA", name: "South Africa", capital: "Pretoria", region: "Africa", subregion: "Southern Africa", population: 60000000, area: 1221037, currency: "South African rand (ZAR)", languages: "Zulu, Xhosa, Afrikaans, English and 7 more", note: "Three capitals: Pretoria executive, Cape Town legislative, Bloemfontein judicial. Democracy from 1994." },
+  { code: "SS", name: "South Sudan", capital: "Juba", region: "Africa", subregion: "Eastern Africa", population: 11000000, area: 619745, currency: "South Sudanese pound (SSP)", languages: "English, Dinka, Nuer, Bari", note: "Independent in 2011 after a referendum, the newest sovereign state in the world." },
+  { code: "SD", name: "Sudan", capital: "Khartoum", region: "Africa", subregion: "Northern Africa", population: 48000000, area: 1861484, currency: "Sudanese pound (SDG)", languages: "Arabic, Nubian, Beja", note: "More pyramids stand at Meroë than in all of Egypt." },
+  { code: "TZ", name: "Tanzania", capital: "Dodoma", region: "Africa", subregion: "Eastern Africa", population: 65000000, area: 947303, currency: "Tanzanian shilling (TZS)", languages: "Swahili, English", note: "Formed in 1964 by uniting Tanganyika and Zanzibar; Kilimanjaro is Africa's highest peak." },
+  { code: "TG", name: "Togo", capital: "Lomé", region: "Africa", subregion: "Western Africa", population: 9000000, area: 56785, currency: "West African CFA franc (XOF)", languages: "French, Ewe, Kabiyè", note: "A German protectorate from 1884, split between Britain and France after 1918." },
+  { code: "TN", name: "Tunisia", capital: "Tunis", region: "Africa", subregion: "Northern Africa", population: 12300000, area: 163610, currency: "Tunisian dinar (TND)", languages: "Arabic, French", note: "Ancient Carthage stood near Tunis; the 2011 revolution began the Arab Spring." },
+  { code: "UG", name: "Uganda", capital: "Kampala", region: "Africa", subregion: "Eastern Africa", population: 47000000, area: 241038, currency: "Ugandan shilling (UGX)", languages: "English, Swahili, Luganda", note: "The source of the Nile at Jinja was confirmed by Speke in 1862." },
+  { code: "ZM", name: "Zambia", capital: "Lusaka", region: "Africa", subregion: "Eastern Africa", population: 20000000, area: 752618, currency: "Zambian kwacha (ZMW)", languages: "English, Bemba, Nyanja", note: "Victoria Falls on the Zambezi lies on its border with Zimbabwe." },
+  { code: "ZW", name: "Zimbabwe", capital: "Harare", region: "Africa", subregion: "Eastern Africa", population: 16000000, area: 390757, currency: "Zimbabwean dollar (ZWL)", languages: "Shona, Ndebele, English", note: "Named after Great Zimbabwe, the stone city built between the 11th and 15th centuries." },
+];
+
+
+/* ==================== src/data/countries/americas.js ==================== */
+
+// The Americas — 35 sovereign states.
+export const AMERICAS = [
+  { code: "AG", name: "Antigua and Barbuda", capital: "Saint John's", region: "Americas", subregion: "Caribbean", population: 100000, area: 442, currency: "East Caribbean dollar (XCD)", languages: "English, Antiguan Creole", note: "Nelson's Dockyard at English Harbour was a British naval base from the 18th century." },
+  { code: "AR", name: "Argentina", capital: "Buenos Aires", region: "Americas", subregion: "South America", population: 46000000, area: 2780400, currency: "Argentine peso (ARS)", languages: "Spanish", note: "Independent from Spain in 1816; Aconcagua is the highest peak outside Asia." },
+  { code: "BS", name: "Bahamas", capital: "Nassau", region: "Americas", subregion: "Caribbean", population: 400000, area: 13878, currency: "Bahamian dollar (BSD)", languages: "English, Bahamian Creole", note: "San Salvador is the likeliest landfall of Columbus in 1492." },
+  { code: "BB", name: "Barbados", capital: "Bridgetown", region: "Americas", subregion: "Caribbean", population: 280000, area: 430, currency: "Barbadian dollar (BBD)", languages: "English, Bajan", note: "Became a republic in 2021, replacing the British monarch with a president." },
+  { code: "BZ", name: "Belize", capital: "Belmopan", region: "Americas", subregion: "Central America", population: 400000, area: 22966, currency: "Belize dollar (BZD)", languages: "English, Belizean Creole, Spanish", note: "The capital moved inland to Belmopan after Hurricane Hattie destroyed Belize City in 1961." },
+  { code: "BO", name: "Bolivia", capital: "Sucre", region: "Americas", subregion: "South America", population: 12000000, area: 1098581, currency: "Bolivian boliviano (BOB)", languages: "Spanish, Quechua, Aymara and 33 more", note: "Sucre is the constitutional capital; La Paz is the seat of government. Named after Simón Bolívar." },
+  { code: "BR", name: "Brazil", capital: "Brasília", region: "Americas", subregion: "South America", population: 215000000, area: 8515767, currency: "Brazilian real (BRL)", languages: "Portuguese", note: "The only Portuguese-speaking country in the Americas; Brasília was built from scratch in 1960." },
+  { code: "CA", name: "Canada", capital: "Ottawa", region: "Americas", subregion: "Northern America", population: 39000000, area: 9984670, currency: "Canadian dollar (CAD)", languages: "English, French", note: "Confederated in 1867; the world's second-largest country by area and longest coastline." },
+  { code: "CL", name: "Chile", capital: "Santiago", region: "Americas", subregion: "South America", population: 19600000, area: 756102, currency: "Chilean peso (CLP)", languages: "Spanish", note: "4,300 km long and never more than 180 km wide; the Atacama is the driest desert on earth." },
+  { code: "CO", name: "Colombia", capital: "Bogotá", region: "Americas", subregion: "South America", population: 52000000, area: 1141748, currency: "Colombian peso (COP)", languages: "Spanish and 65 indigenous languages", note: "Gran Colombia, Bolívar's republic, broke apart in 1830 into Colombia, Venezuela, Ecuador and Panama." },
+  { code: "CR", name: "Costa Rica", capital: "San José", region: "Americas", subregion: "Central America", population: 5200000, area: 51100, currency: "Costa Rican colón (CRC)", languages: "Spanish", note: "Abolished its army in 1948 and has been a democracy without interruption since." },
+  { code: "CU", name: "Cuba", capital: "Havana", region: "Americas", subregion: "Caribbean", population: 11200000, area: 109884, currency: "Cuban peso (CUP)", languages: "Spanish", note: "Independent from Spain in 1902; the 1959 revolution aligned it with the Soviet Union." },
+  { code: "DM", name: "Dominica", capital: "Roseau", region: "Americas", subregion: "Caribbean", population: 70000, area: 751, currency: "East Caribbean dollar (XCD)", languages: "English, Dominican Creole", note: "The last Caribbean island colonised by Europeans, in the 18th century; still has a Kalinago territory." },
+  { code: "DO", name: "Dominican Republic", capital: "Santo Domingo", region: "Americas", subregion: "Caribbean", population: 11200000, area: 48671, currency: "Dominican peso (DOP)", languages: "Spanish", note: "Santo Domingo, founded 1498, is the oldest continuously inhabited European city in the Americas." },
+  { code: "EC", name: "Ecuador", capital: "Quito", region: "Americas", subregion: "South America", population: 18000000, area: 283561, currency: "United States dollar (USD)", languages: "Spanish, Quechua, Shuar", note: "Named for the equator; the Galápagos Islands inspired Darwin's theory of evolution." },
+  { code: "SV", name: "El Salvador", capital: "San Salvador", region: "Americas", subregion: "Central America", population: 6300000, area: 21041, currency: "United States dollar (USD)", languages: "Spanish", note: "The smallest and most densely populated country in Central America." },
+  { code: "GD", name: "Grenada", capital: "St. George's", region: "Americas", subregion: "Caribbean", population: 110000, area: 344, currency: "East Caribbean dollar (XCD)", languages: "English, Grenadian Creole", note: "The 1983 US-led invasion removed a revolutionary government installed four years earlier." },
+  { code: "GT", name: "Guatemala", capital: "Guatemala City", region: "Americas", subregion: "Central America", population: 17600000, area: 108889, currency: "Guatemalan quetzal (GTQ)", languages: "Spanish and 22 Mayan languages", note: "Tikal was one of the great cities of the Classic Maya world." },
+  { code: "GY", name: "Guyana", capital: "Georgetown", region: "Americas", subregion: "South America", population: 800000, area: 214969, currency: "Guyanese dollar (GYD)", languages: "English, Guyanese Creole", note: "The only South American country with English as its official language." },
+  { code: "HT", name: "Haiti", capital: "Port-au-Prince", region: "Americas", subregion: "Caribbean", population: 11500000, area: 27750, currency: "Haitian gourde (HTG)", languages: "Haitian Creole, French", note: "The first Black republic, independent in 1804 after the only successful slave revolution." },
+  { code: "HN", name: "Honduras", capital: "Tegucigalpa", region: "Americas", subregion: "Central America", population: 10300000, area: 112492, currency: "Honduran lempira (HNL)", languages: "Spanish, Garifuna", note: "Copán was a major Maya city; the country became independent from Spain in 1821." },
+  { code: "JM", name: "Jamaica", capital: "Kingston", region: "Americas", subregion: "Caribbean", population: 2800000, area: 10991, currency: "Jamaican dollar (JMD)", languages: "English, Jamaican Patois", note: "Independent in 1962; Port Royal was the 17th-century 'wickedest city on earth' before an earthquake sank it." },
+  { code: "MX", name: "Mexico", capital: "Mexico City", region: "Americas", subregion: "North America", population: 127000000, area: 1964375, currency: "Mexican peso (MXN)", languages: "Spanish and 68 national languages", note: "Mexico City stands on the drained lake bed of Tenochtitlan, conquered in 1521." },
+  { code: "NI", name: "Nicaragua", capital: "Managua", region: "Americas", subregion: "Central America", population: 6900000, area: 130373, currency: "Nicaraguan córdoba (NIO)", languages: "Spanish, Miskito", note: "Lake Nicaragua is the largest lake in Central America and holds freshwater sharks." },
+  { code: "PA", name: "Panama", capital: "Panama City", region: "Americas", subregion: "Central America", population: 4400000, area: 75417, currency: "Panamanian balboa (PAB)", languages: "Spanish", note: "Separated from Colombia in 1903 to build the canal, which opened in 1914." },
+  { code: "PY", name: "Paraguay", capital: "Asunción", region: "Americas", subregion: "South America", population: 6800000, area: 406752, currency: "Paraguayan guaraní (PYG)", languages: "Spanish, Guaraní", note: "One of only two landlocked South American states; lost two-thirds of its men in the War of the Triple Alliance." },
+  { code: "PE", name: "Peru", capital: "Lima", region: "Americas", subregion: "South America", population: 34000000, area: 1285216, currency: "Peruvian sol (PEN)", languages: "Spanish, Quechua, Aymara", note: "The Inca capital Cusco and Machu Picchu sit in its highlands; independent from Spain in 1821." },
+  { code: "KN", name: "Saint Kitts and Nevis", capital: "Basseterre", region: "Americas", subregion: "Caribbean", population: 50000, area: 261, currency: "East Caribbean dollar (XCD)", languages: "English", note: "The smallest country in the Americas by area and population." },
+  { code: "LC", name: "Saint Lucia", capital: "Castries", region: "Americas", subregion: "Caribbean", population: 180000, area: 616, currency: "East Caribbean dollar (XCD)", languages: "English, Saint Lucian Creole", note: "Changed hands between Britain and France fourteen times before 1814." },
+  { code: "VC", name: "Saint Vincent and the Grenadines", capital: "Kingstown", region: "Americas", subregion: "Caribbean", population: 100000, area: 389, currency: "East Caribbean dollar (XCD)", languages: "English, Vincentian Creole", note: "The 1979 eruption of La Soufrière forced the evacuation of the northern third of the island." },
+  { code: "SR", name: "Suriname", capital: "Paramaribo", region: "Americas", subregion: "South America", population: 620000, area: 163820, currency: "Surinamese dollar (SRD)", languages: "Dutch, Sranan Tongo", note: "South America's smallest country and the only Dutch-speaking one; independent in 1975." },
+  { code: "TT", name: "Trinidad and Tobago", capital: "Port of Spain", region: "Americas", subregion: "Caribbean", population: 1500000, area: 5130, currency: "Trinidad and Tobago dollar (TTD)", languages: "English, Trinidadian Creole", note: "The birthplace of steelpan, calypso and soca; independent in 1962." },
+  { code: "US", name: "United States", capital: "Washington, D.C.", region: "Americas", subregion: "Northern America", population: 335000000, area: 9833517, currency: "United States dollar (USD)", languages: "English (de facto), Spanish", note: "Declared independence in 1776; 50 states and the world's largest economy." },
+  { code: "UY", name: "Uruguay", capital: "Montevideo", region: "Americas", subregion: "South America", population: 3400000, area: 181034, currency: "Uruguayan peso (UYU)", languages: "Spanish", note: "The first nation to legalise same-sex marriage, cannabis and abortion nationally." },
+  { code: "VE", name: "Venezuela", capital: "Caracas", region: "Americas", subregion: "South America", population: 28000000, area: 916445, currency: "Venezuelan bolívar (VES)", languages: "Spanish and 40 indigenous languages", note: "Lake Maracaibo holds one of the world's largest oil reserves; Angel Falls drops 979 m." },
+];
+
+
+/* ==================== src/data/countries/asia.js ==================== */
+
+// Asia — 49 states, from the Levant to the Pacific.
+export const ASIA = [
+  { code: "AF", name: "Afghanistan", capital: "Kabul", region: "Asia", subregion: "Southern Asia", population: 41000000, area: 652230, currency: "Afghan afghani (AFN)", languages: "Pashto, Dari", note: "A crossroads of the Silk Road; the Graeco-Bactrian kingdom and the Kushan empire ruled here." },
+  { code: "AM", name: "Armenia", capital: "Yerevan", region: "Asia", subregion: "Western Asia", population: 3000000, area: 29743, currency: "Armenian dram (AMD)", languages: "Armenian", note: "Adopted Christianity in 301, the first state to do so; Mount Ararat lies just across the border." },
+  { code: "AZ", name: "Azerbaijan", capital: "Baku", region: "Asia", subregion: "Western Asia", population: 10100000, area: 86600, currency: "Azerbaijani manat (AZN)", languages: "Azerbaijani", note: "The Land of Fire: natural gas seeps at Yanar Dag have burned for centuries." },
+  { code: "BH", name: "Bahrain", capital: "Manama", region: "Asia", subregion: "Western Asia", population: 1500000, area: 778, currency: "Bahraini dinar (BHD)", languages: "Arabic", note: "An island kingdom that was a centre of the Dilmun civilisation around 2000 BCE." },
+  { code: "BD", name: "Bangladesh", capital: "Dhaka", region: "Asia", subregion: "Southern Asia", population: 171000000, area: 147570, currency: "Bangladeshi taka (BDT)", languages: "Bengali", note: "Independent in 1971; the Ganges–Brahmaputra delta is the largest river delta in the world." },
+  { code: "BT", name: "Bhutan", capital: "Thimphu", region: "Asia", subregion: "Southern Asia", population: 800000, area: 38394, currency: "Bhutanese ngultrum (BTN)", languages: "Dzongkha", note: "Measures Gross National Happiness; the only carbon-negative country on earth." },
+  { code: "BN", name: "Brunei", capital: "Bandar Seri Begawan", region: "Asia", subregion: "South-Eastern Asia", population: 450000, area: 5765, currency: "Brunei dollar (BND)", languages: "Malay", note: "A sultanate that once controlled all of Borneo; independent from Britain in 1984." },
+  { code: "KH", name: "Cambodia", capital: "Phnom Penh", region: "Asia", subregion: "South-Eastern Asia", population: 17000000, area: 181035, currency: "Cambodian riel (KHR)", languages: "Khmer", note: "Angkor was the largest pre-industrial city on earth, capital of the Khmer Empire." },
+  { code: "CN", name: "China", capital: "Beijing", region: "Asia", subregion: "Eastern Asia", population: 1410000000, area: 9596961, currency: "Renminbi (CNY)", languages: "Mandarin and 7 major Sinitic languages", note: "Imperial rule ran from 221 BCE to 1912; the Great Wall was built and rebuilt over 2,000 years." },
+  { code: "CY", name: "Cyprus", capital: "Nicosia", region: "Asia", subregion: "Western Asia", population: 1200000, area: 9251, currency: "Euro (EUR)", languages: "Greek, Turkish", note: "The island has been divided by a UN buffer zone since the 1974 intervention." },
+  { code: "GE", name: "Georgia", capital: "Tbilisi", region: "Asia", subregion: "Western Asia", population: 3700000, area: 69700, currency: "Georgian lari (GEL)", languages: "Georgian", note: "Its own alphabet has been in use since the 5th century; wine has been made here for 8,000 years." },
+  { code: "IN", name: "India", capital: "New Delhi", region: "Asia", subregion: "Southern Asia", population: 1430000000, area: 3287263, currency: "Indian rupee (INR)", languages: "Hindi, English and 21 scheduled languages", note: "The world's most populous country; the Indus Valley cities of Harappa and Mohenjo-daro date to 2500 BCE." },
+  { code: "ID", name: "Indonesia", capital: "Jakarta", region: "Asia", subregion: "South-Eastern Asia", population: 278000000, area: 1904569, currency: "Indonesian rupiah (IDR)", languages: "Indonesian and 700 regional languages", note: "17,000 islands; Borobudur and Prambanan were built by the Sailendra and Mataram dynasties." },
+  { code: "IR", name: "Iran", capital: "Tehran", region: "Asia", subregion: "Southern Asia", population: 88000000, area: 1648195, currency: "Iranian rial (IRR)", languages: "Persian, Azerbaijani, Kurdish", note: "Successor to the Achaemenid and Sassanid empires; Persepolis was burned by Alexander in 330 BCE." },
+  { code: "IQ", name: "Iraq", capital: "Baghdad", region: "Asia", subregion: "Western Asia", population: 45000000, area: 438317, currency: "Iraqi dinar (IQD)", languages: "Arabic, Kurdish", note: "Mesopotamia, where writing, the wheel and the first cities appeared." },
+  { code: "IL", name: "Israel", capital: "Jerusalem", region: "Asia", subregion: "Western Asia", population: 9700000, area: 20770, currency: "Israeli new shekel (ILS)", languages: "Hebrew, Arabic", note: "Established in 1948; Jerusalem's status is contested and not recognised by all states." },
+  { code: "JP", name: "Japan", capital: "Tokyo", region: "Asia", subregion: "Eastern Asia", population: 124000000, area: 377915, currency: "Japanese yen (JPY)", languages: "Japanese", note: "An unbroken imperial line since 660 BCE by tradition; Edo was renamed Tokyo in 1868." },
+  { code: "JO", name: "Jordan", capital: "Amman", region: "Asia", subregion: "Western Asia", population: 11300000, area: 89342, currency: "Jordanian dinar (JOD)", languages: "Arabic", note: "Petra, carved by the Nabataeans, was a caravan capital on the incense route." },
+  { code: "KZ", name: "Kazakhstan", capital: "Astana", region: "Asia", subregion: "Central Asia", population: 19600000, area: 2724900, currency: "Kazakhstani tenge (KZT)", languages: "Kazakh, Russian", note: "The largest landlocked country; the Baikonur cosmodrome has launched every Soviet crewed flight." },
+  { code: "KW", name: "Kuwait", capital: "Kuwait City", region: "Asia", subregion: "Western Asia", population: 4300000, area: 17818, currency: "Kuwaiti dinar (KWD)", languages: "Arabic", note: "Invaded by Iraq in 1990 and liberated by a UN coalition in 1991." },
+  { code: "KG", name: "Kyrgyzstan", capital: "Bishkek", region: "Asia", subregion: "Central Asia", population: 7000000, area: 199951, currency: "Kyrgyzstani som (KGS)", languages: "Kyrgyz, Russian", note: "More than 90 per cent mountainous; Lake Issyk-Kul never freezes." },
+  { code: "LA", name: "Laos", capital: "Vientiane", region: "Asia", subregion: "South-Eastern Asia", population: 7500000, area: 236800, currency: "Lao kip (LAK)", languages: "Lao", note: "Lan Xang, the 'kingdom of a million elephants', dominated the region from the 14th century." },
+  { code: "LB", name: "Lebanon", capital: "Beirut", region: "Asia", subregion: "Western Asia", population: 5500000, area: 10400, currency: "Lebanese pound (LBP)", languages: "Arabic, French", note: "The Phoenicians spread their alphabet from these ports; Byblos is among the oldest cities." },
+  { code: "MY", name: "Malaysia", capital: "Kuala Lumpur", region: "Asia", subregion: "South-Eastern Asia", population: 34000000, area: 330803, currency: "Malaysian ringgit (MYR)", languages: "Malay, English, Chinese, Tamil", note: "Formed in 1963; the Malacca Sultanate controlled the strait from the 15th century." },
+  { code: "MV", name: "Maldives", capital: "Malé", region: "Asia", subregion: "Southern Asia", population: 530000, area: 298, currency: "Maldivian rufiyaa (MVR)", languages: "Dhivehi", note: "1,192 coral islands, the lowest-lying country in the world at 1.5 m average elevation." },
+  { code: "MN", name: "Mongolia", capital: "Ulaanbaatar", region: "Asia", subregion: "Eastern Asia", population: 3400000, area: 1564116, currency: "Mongolian tögrög (MNT)", languages: "Mongolian", note: "Genghis Khan united the steppe tribes in 1206 and built the largest contiguous land empire." },
+  { code: "MM", name: "Myanmar", capital: "Naypyidaw", region: "Asia", subregion: "South-Eastern Asia", population: 54000000, area: 676578, currency: "Burmese kyat (MMK)", languages: "Burmese", note: "The capital moved to Naypyidaw in 2005; Bagan holds over 2,000 surviving temples." },
+  { code: "NP", name: "Nepal", capital: "Kathmandu", region: "Asia", subregion: "Southern Asia", population: 30000000, area: 147181, currency: "Nepalese rupee (NPR)", languages: "Nepali and 120 other languages", note: "Home to Everest and the birthplace of the Buddha at Lumbini." },
+  { code: "KP", name: "North Korea", capital: "Pyongyang", region: "Asia", subregion: "Eastern Asia", population: 26000000, area: 120538, currency: "North Korean won (KPW)", languages: "Korean", note: "Founded in 1948; the Korean War ended in a 1953 armistice with no peace treaty." },
+  { code: "OM", name: "Oman", capital: "Muscat", region: "Asia", subregion: "Western Asia", population: 4600000, area: 309500, currency: "Omani rial (OMR)", languages: "Arabic", note: "The Omani empire once held Zanzibar and the East African coast." },
+  { code: "PK", name: "Pakistan", capital: "Islamabad", region: "Asia", subregion: "Southern Asia", population: 240000000, area: 881913, currency: "Pakistani rupee (PKR)", languages: "Urdu, English, Punjabi, Sindhi", note: "Created in 1947; Mohenjo-daro and Harappa lie within its borders." },
+  { code: "PS", name: "Palestine", capital: "Ramallah", region: "Asia", subregion: "Western Asia", population: 5400000, area: 6020, currency: "Israeli new shekel (ILS)", languages: "Arabic", note: "A UN non-member observer state since 2012; Ramallah is the administrative centre." },
+  { code: "PH", name: "Philippines", capital: "Manila", region: "Asia", subregion: "South-Eastern Asia", population: 116000000, area: 342353, currency: "Philippine peso (PHP)", languages: "Filipino, English and 8 regional languages", note: "7,641 islands; Spanish rule lasted 333 years, then American rule until 1946." },
+  { code: "QA", name: "Qatar", capital: "Doha", region: "Asia", subregion: "Western Asia", population: 2700000, area: 11586, currency: "Qatari riyal (QAR)", languages: "Arabic", note: "A pearl-diving peninsula that became the world's largest liquefied gas exporter." },
+  { code: "SA", name: "Saudi Arabia", capital: "Riyadh", region: "Asia", subregion: "Western Asia", population: 36000000, area: 2149690, currency: "Saudi riyal (SAR)", languages: "Arabic", note: "Unified by Ibn Saud between 1902 and 1932; Mecca and Medina lie within it." },
+  { code: "SG", name: "Singapore", capital: "Singapore", region: "Asia", subregion: "South-Eastern Asia", population: 5900000, area: 728, currency: "Singapore dollar (SGD)", languages: "English, Malay, Mandarin, Tamil", note: "Expelled from Malaysia in 1965; one of only three surviving city-states." },
+  { code: "KR", name: "South Korea", capital: "Seoul", region: "Asia", subregion: "Eastern Asia", population: 51700000, area: 100210, currency: "South Korean won (KRW)", languages: "Korean", note: "Founded in 1948; transformed from war ruins to a high-income economy within 40 years." },
+  { code: "LK", name: "Sri Lanka", capital: "Sri Jayawardenepura Kotte", region: "Asia", subregion: "Southern Asia", population: 22000000, area: 65610, currency: "Sri Lankan rupee (LKR)", languages: "Sinhala, Tamil", note: "The Anuradhapura kingdom ruled for 1,400 years; the capital moved to Kotte in 1982." },
+  { code: "SY", name: "Syria", capital: "Damascus", region: "Asia", subregion: "Western Asia", population: 22000000, area: 185180, currency: "Syrian pound (SYP)", languages: "Arabic, Kurdish", note: "Damascus is among the oldest continuously inhabited capitals; Palmyra was a desert trade city." },
+  { code: "TW", name: "Taiwan", capital: "Taipei", region: "Asia", subregion: "Eastern Asia", population: 23400000, area: 36193, currency: "New Taiwan dollar (TWD)", languages: "Mandarin, Taiwanese Hokkien, Hakka", note: "Governed separately since 1949; its sovereign status is disputed." },
+  { code: "TJ", name: "Tajikistan", capital: "Dushanbe", region: "Asia", subregion: "Central Asia", population: 10000000, area: 143100, currency: "Tajikistani somoni (TJS)", languages: "Tajik, Russian", note: "The Pamir mountains cover half the country; the Silk Road crossed them for centuries." },
+  { code: "TH", name: "Thailand", capital: "Bangkok", region: "Asia", subregion: "South-Eastern Asia", population: 71000000, area: 513120, currency: "Thai baht (THB)", languages: "Thai", note: "Never colonised; Siam was renamed Thailand in 1939." },
+  { code: "TL", name: "Timor-Leste", capital: "Dili", region: "Asia", subregion: "South-Eastern Asia", population: 1300000, area: 14874, currency: "United States dollar (USD)", languages: "Tetum, Portuguese", note: "The first new sovereign state of the 21st century, independent in 2002." },
+  { code: "TR", name: "Turkey", capital: "Ankara", region: "Asia", subregion: "Western Asia", population: 85000000, area: 783562, currency: "Turkish lira (TRY)", languages: "Turkish", note: "The Ottoman Empire ended in 1922; the republic was founded by Atatürk in 1923." },
+  { code: "TM", name: "Turkmenistan", capital: "Ashgabat", region: "Asia", subregion: "Central Asia", population: 6400000, area: 488100, currency: "Turkmenistan manat (TMT)", languages: "Turkmen, Russian", note: "Merv was one of the largest cities in the medieval world before the Mongols destroyed it." },
+  { code: "AE", name: "United Arab Emirates", capital: "Abu Dhabi", region: "Asia", subregion: "Western Asia", population: 9400000, area: 83600, currency: "UAE dirham (AED)", languages: "Arabic", note: "Seven emirates federated in 1971 after Britain withdrew from the Gulf." },
+  { code: "UZ", name: "Uzbekistan", capital: "Tashkent", region: "Asia", subregion: "Central Asia", population: 35000000, area: 447400, currency: "Uzbekistani som (UZS)", languages: "Uzbek, Russian", note: "Samarkand and Bukhara were Silk Road capitals under Timur and the Samanids." },
+  { code: "VN", name: "Vietnam", capital: "Hanoi", region: "Asia", subregion: "South-Eastern Asia", population: 98000000, area: 331212, currency: "Vietnamese đồng (VND)", languages: "Vietnamese", note: "Reunified in 1976; the country's name dates to Emperor Gia Long in 1804." },
+  { code: "YE", name: "Yemen", capital: "Sana'a", region: "Asia", subregion: "Western Asia", population: 34000000, area: 527968, currency: "Yemeni rial (YER)", languages: "Arabic", note: "The Sabaean kingdom built the Marib dam; Sana'a's old city is a UNESCO site." },
+];
+
+
+/* ==================== src/data/countries/europe.js ==================== */
+
+// Europe — 44 sovereign states.
+export const EUROPE = [
+  { code: "AL", name: "Albania", capital: "Tirana", region: "Europe", subregion: "Southern Europe", population: 2800000, area: 28748, currency: "Albanian lek (ALL)", languages: "Albanian", note: "Bunkers built under Enver Hoxha still number in the hundreds of thousands." },
+  { code: "AD", name: "Andorra", capital: "Andorra la Vella", region: "Europe", subregion: "Southern Europe", population: 80000, area: 468, currency: "Euro (EUR)", languages: "Catalan", note: "A co-principality ruled jointly by the French president and a Spanish bishop." },
+  { code: "AT", name: "Austria", capital: "Vienna", region: "Europe", subregion: "Western Europe", population: 9100000, area: 83879, currency: "Euro (EUR)", languages: "German", note: "The Habsburg court ruled from Vienna for six centuries; the empire dissolved in 1918." },
+  { code: "BY", name: "Belarus", capital: "Minsk", region: "Europe", subregion: "Eastern Europe", population: 9200000, area: 207600, currency: "Belarusian ruble (BYN)", languages: "Belarusian, Russian", note: "The Białowieża forest, shared with Poland, is Europe's last great primeval woodland." },
+  { code: "BE", name: "Belgium", capital: "Brussels", region: "Europe", subregion: "Western Europe", population: 11700000, area: 30528, currency: "Euro (EUR)", languages: "Dutch, French, German", note: "Independent in 1830; Brussels hosts the EU institutions and NATO." },
+  { code: "BA", name: "Bosnia and Herzegovina", capital: "Sarajevo", region: "Europe", subregion: "Southern Europe", population: 3200000, area: 51197, currency: "Convertible mark (BAM)", languages: "Bosnian, Croatian, Serbian", note: "The 1914 assassination in Sarajevo triggered the First World War." },
+  { code: "BG", name: "Bulgaria", capital: "Sofia", region: "Europe", subregion: "Eastern Europe", population: 6500000, area: 110879, currency: "Bulgarian lev (BGN)", languages: "Bulgarian", note: "The Cyrillic alphabet was developed in the First Bulgarian Empire in the 9th century." },
+  { code: "HR", name: "Croatia", capital: "Zagreb", region: "Europe", subregion: "Southern Europe", population: 3900000, area: 56594, currency: "Euro (EUR)", languages: "Croatian", note: "Independent in 1991; Dubrovnik was a rival trading republic to Venice for 500 years." },
+  { code: "CZ", name: "Czechia", capital: "Prague", region: "Europe", subregion: "Eastern Europe", population: 10500000, area: 78867, currency: "Czech koruna (CZK)", languages: "Czech", note: "Bohemia's Prague Castle is the largest ancient castle complex in the world." },
+  { code: "DK", name: "Denmark", capital: "Copenhagen", region: "Europe", subregion: "Northern Europe", population: 5900000, area: 43094, currency: "Danish krone (DKK)", languages: "Danish", note: "The oldest monarchy in Europe, tracing its line to Gorm the Old in the 10th century." },
+  { code: "EE", name: "Estonia", capital: "Tallinn", region: "Europe", subregion: "Northern Europe", population: 1300000, area: 45228, currency: "Euro (EUR)", languages: "Estonian", note: "The first country to hold national elections over the internet." },
+  { code: "FI", name: "Finland", capital: "Helsinki", region: "Europe", subregion: "Northern Europe", population: 5500000, area: 338424, currency: "Euro (EUR)", languages: "Finnish, Swedish", note: "Independent from Russia in 1917; 188,000 lakes within its borders." },
+  { code: "FR", name: "France", capital: "Paris", region: "Europe", subregion: "Western Europe", population: 68000000, area: 551695, currency: "Euro (EUR)", languages: "French", note: "A republic since 1792; its overseas territories put land on four continents." },
+  { code: "DE", name: "Germany", capital: "Berlin", region: "Europe", subregion: "Western Europe", population: 84000000, area: 357022, currency: "Euro (EUR)", languages: "German", note: "Unified in 1871 and again in 1990; the Holy Roman Empire used the title for 1,000 years." },
+  { code: "GR", name: "Greece", capital: "Athens", region: "Europe", subregion: "Southern Europe", population: 10400000, area: 131957, currency: "Euro (EUR)", languages: "Greek", note: "The polis of Athens produced the first democracy in 508 BCE." },
+  { code: "HU", name: "Hungary", capital: "Budapest", region: "Europe", subregion: "Eastern Europe", population: 9600000, area: 93028, currency: "Hungarian forint (HUF)", languages: "Hungarian", note: "The Hungarian kingdom held off the Ottomans for a century and a half." },
+  { code: "IS", name: "Iceland", capital: "Reykjavík", region: "Europe", subregion: "Northern Europe", population: 390000, area: 103000, currency: "Icelandic króna (ISK)", languages: "Icelandic", note: "The Althing, founded in 930, is the oldest surviving parliament in the world." },
+  { code: "IE", name: "Ireland", capital: "Dublin", region: "Europe", subregion: "Northern Europe", population: 5100000, area: 70273, currency: "Euro (EUR)", languages: "Irish, English", note: "The Free State was established in 1922; the republic was declared in 1949." },
+  { code: "IT", name: "Italy", capital: "Rome", region: "Europe", subregion: "Southern Europe", population: 59000000, area: 301340, currency: "Euro (EUR)", languages: "Italian", note: "Unified in 1861; the Roman Empire's heartland and the birthplace of the Renaissance." },
+  { code: "XK", name: "Kosovo", capital: "Pristina", region: "Europe", subregion: "Southern Europe", population: 1800000, area: 10887, currency: "Euro (EUR)", languages: "Albanian, Serbian", note: "Declared independence in 2008; recognised by roughly half of UN member states." },
+  { code: "LV", name: "Latvia", capital: "Riga", region: "Europe", subregion: "Northern Europe", population: 1900000, area: 64589, currency: "Euro (EUR)", languages: "Latvian", note: "Riga was a Hanseatic port; the country regained independence in 1991." },
+  { code: "LI", name: "Liechtenstein", capital: "Vaduz", region: "Europe", subregion: "Western Europe", population: 40000, area: 160, currency: "Swiss franc (CHF)", languages: "German", note: "A doubly landlocked principality between Switzerland and Austria." },
+  { code: "LT", name: "Lithuania", capital: "Vilnius", region: "Europe", subregion: "Northern Europe", population: 2800000, area: 65300, currency: "Euro (EUR)", languages: "Lithuanian", note: "The Grand Duchy was the largest state in Europe in the 15th century." },
+  { code: "LU", name: "Luxembourg", capital: "Luxembourg", region: "Europe", subregion: "Western Europe", population: 650000, area: 2586, currency: "Euro (EUR)", languages: "Luxembourgish, French, German", note: "The world's only remaining sovereign grand duchy." },
+  { code: "MT", name: "Malta", capital: "Valletta", region: "Europe", subregion: "Southern Europe", population: 540000, area: 316, currency: "Euro (EUR)", languages: "Maltese, English", note: "The Megalithic temples predate Stonehenge; the Knights of St John ruled from 1530." },
+  { code: "MD", name: "Moldova", capital: "Chișinău", region: "Europe", subregion: "Eastern Europe", population: 2500000, area: 33846, currency: "Moldovan leu (MDL)", languages: "Romanian", note: "Independent in 1991; the breakaway region of Transnistria is outside its control." },
+  { code: "MC", name: "Monaco", capital: "Monaco", region: "Europe", subregion: "Western Europe", population: 40000, area: 2, currency: "Euro (EUR)", languages: "French", note: "The second-smallest country, ruled by the Grimaldi family since 1297." },
+  { code: "ME", name: "Montenegro", capital: "Podgorica", region: "Europe", subregion: "Southern Europe", population: 620000, area: 13812, currency: "Euro (EUR)", languages: "Montenegrin", note: "Independent in 2006 after a referendum dissolved the state union with Serbia." },
+  { code: "NL", name: "Netherlands", capital: "Amsterdam", region: "Europe", subregion: "Western Europe", population: 17800000, area: 41850, currency: "Euro (EUR)", languages: "Dutch", note: "Amsterdam is the capital; the government sits at The Hague. A quarter of the land is below sea level." },
+  { code: "MK", name: "North Macedonia", capital: "Skopje", region: "Europe", subregion: "Southern Europe", population: 2100000, area: 25713, currency: "Macedonian denar (MKD)", languages: "Macedonian, Albanian", note: "Renamed in 2019 to settle a naming dispute with Greece." },
+  { code: "NO", name: "Norway", capital: "Oslo", region: "Europe", subregion: "Northern Europe", population: 5500000, area: 323802, currency: "Norwegian krone (NOK)", languages: "Norwegian", note: "Independent from Sweden in 1905; its coastline with fjords and islands exceeds 100,000 km." },
+  { code: "PL", name: "Poland", capital: "Warsaw", region: "Europe", subregion: "Eastern Europe", population: 37000000, area: 312679, currency: "Polish złoty (PLN)", languages: "Polish", note: "The Polish–Lithuanian Commonwealth was partitioned out of existence in 1795 and restored in 1918." },
+  { code: "PT", name: "Portugal", capital: "Lisbon", region: "Europe", subregion: "Southern Europe", population: 10400000, area: 92090, currency: "Euro (EUR)", languages: "Portuguese", note: "The oldest fixed borders in Europe; its navigators opened the sea route to India in 1498." },
+  { code: "RO", name: "Romania", capital: "Bucharest", region: "Europe", subregion: "Eastern Europe", population: 19000000, area: 238391, currency: "Romanian leu (RON)", languages: "Romanian", note: "Dacia was a Roman province; the modern state formed in 1859 and gained full independence in 1877." },
+  { code: "RU", name: "Russia", capital: "Moscow", region: "Europe", subregion: "Eastern Europe", population: 144000000, area: 17098242, currency: "Russian ruble (RUB)", languages: "Russian", note: "The largest country on earth by area, spanning eleven time zones and two continents." },
+  { code: "SM", name: "San Marino", capital: "San Marino", region: "Europe", subregion: "Southern Europe", population: 30000, area: 61, currency: "Euro (EUR)", languages: "Italian", note: "Claims to be the oldest surviving republic, founded in 301 CE." },
+  { code: "RS", name: "Serbia", capital: "Belgrade", region: "Europe", subregion: "Southern Europe", population: 6700000, area: 88361, currency: "Serbian dinar (RSD)", languages: "Serbian", note: "Belgrade has been destroyed and rebuilt more than 40 times in its history." },
+  { code: "SK", name: "Slovakia", capital: "Bratislava", region: "Europe", subregion: "Eastern Europe", population: 5400000, area: 49035, currency: "Euro (EUR)", languages: "Slovak", note: "Separated from Czechia in the 'Velvet Divorce' of 1993." },
+  { code: "SI", name: "Slovenia", capital: "Ljubljana", region: "Europe", subregion: "Southern Europe", population: 2100000, area: 20273, currency: "Euro (EUR)", languages: "Slovene", note: "The first Yugoslav republic to secede, in 1991." },
+  { code: "ES", name: "Spain", capital: "Madrid", region: "Europe", subregion: "Southern Europe", population: 48000000, area: 505992, currency: "Euro (EUR)", languages: "Spanish, Catalan, Galician, Basque", note: "The union of Castile and Aragon in 1469 created the state that would rule the Americas." },
+  { code: "SE", name: "Sweden", capital: "Stockholm", region: "Europe", subregion: "Northern Europe", population: 10500000, area: 450295, currency: "Swedish krona (SEK)", languages: "Swedish", note: "Ended its Baltic empire in 1721; has stayed out of war since 1814." },
+  { code: "CH", name: "Switzerland", capital: "Bern", region: "Europe", subregion: "Western Europe", population: 8800000, area: 41277, currency: "Swiss franc (CHF)", languages: "German, French, Italian, Romansh", note: "The Swiss Confederation dates to 1291; neutrality was recognised at Vienna in 1815." },
+  { code: "UA", name: "Ukraine", capital: "Kyiv", region: "Europe", subregion: "Eastern Europe", population: 38000000, area: 603550, currency: "Ukrainian hryvnia (UAH)", languages: "Ukrainian", note: "Kyivan Rus' was the first East Slavic state; independence was restored in 1991." },
+  { code: "GB", name: "United Kingdom", capital: "London", region: "Europe", subregion: "Northern Europe", population: 67000000, area: 243610, currency: "Pound sterling (GBP)", languages: "English", note: "The union of England and Scotland dates to 1707; the empire at its height covered a quarter of the globe." },
+  { code: "VA", name: "Vatican City", capital: "Vatican City", region: "Europe", subregion: "Southern Europe", population: 800, area: 0, currency: "Euro (EUR)", languages: "Italian, Latin", note: "The smallest sovereign state, created in 1929 by the Lateran Treaty." },
+];
+
+
+/* ==================== src/data/countries/oceania.js ==================== */
+
+// Oceania — 14 sovereign states.
+export const OCEANIA = [
+  { code: "AU", name: "Australia", capital: "Canberra", region: "Oceania", subregion: "Australia and New Zealand", population: 26000000, area: 7692024, currency: "Australian dollar (AUD)", languages: "English", note: "Aboriginal occupation goes back at least 65,000 years; federation came in 1901." },
+  { code: "FJ", name: "Fiji", capital: "Suva", region: "Oceania", subregion: "Melanesia", population: 930000, area: 18274, currency: "Fijian dollar (FJD)", languages: "Fijian, English, Fiji Hindi", note: "332 islands; independent from Britain in 1970 after 96 years as a colony." },
+  { code: "KI", name: "Kiribati", capital: "South Tarawa", region: "Oceania", subregion: "Micronesia", population: 130000, area: 811, currency: "Australian dollar (AUD)", languages: "Gilbertese, English", note: "Its 33 atolls straddle the equator and the date line, giving it the earliest time zone on earth." },
+  { code: "MH", name: "Marshall Islands", capital: "Majuro", region: "Oceania", subregion: "Micronesia", population: 40000, area: 181, currency: "United States dollar (USD)", languages: "Marshallese, English", note: "The Bikini Atoll nuclear tests ran from 1946 to 1958; independence came in 1986." },
+  { code: "FM", name: "Micronesia", capital: "Palikir", region: "Oceania", subregion: "Micronesia", population: 110000, area: 702, currency: "United States dollar (USD)", languages: "English and 6 local languages", note: "607 islands spread across the Caroline archipelago, once a Spanish and then Japanese mandate." },
+  { code: "NR", name: "Nauru", capital: "Yaren", region: "Oceania", subregion: "Micronesia", population: 12000, area: 21, currency: "Australian dollar (AUD)", languages: "Nauruan, English", note: "The world's smallest island country; phosphate mining stripped most of its interior." },
+  { code: "NZ", name: "New Zealand", capital: "Wellington", region: "Oceania", subregion: "Australia and New Zealand", population: 5200000, area: 268021, currency: "New Zealand dollar (NZD)", languages: "English, Māori, New Zealand Sign Language", note: "The Treaty of Waitangi, signed in 1840, founded the relationship between Crown and Māori." },
+  { code: "PW", name: "Palau", capital: "Ngerulmud", region: "Oceania", subregion: "Micronesia", population: 18000, area: 459, currency: "United States dollar (USD)", languages: "Palauan, English", note: "The first country to ban reef-harming sunscreen; the capital moved to Ngerulmud in 2006." },
+  { code: "PG", name: "Papua New Guinea", capital: "Port Moresby", region: "Oceania", subregion: "Melanesia", population: 10300000, area: 462840, currency: "Papua New Guinean kina (PGK)", languages: "Tok Pisin, English, Hiri Motu", note: "More than 800 languages are spoken here, the greatest language density on earth." },
+  { code: "WS", name: "Samoa", capital: "Apia", region: "Oceania", subregion: "Polynesia", population: 220000, area: 2842, currency: "Samoan tālā (WST)", languages: "Samoan, English", note: "The first Pacific nation to gain independence, in 1962; it switched to driving on the left in 2009." },
+  { code: "SB", name: "Solomon Islands", capital: "Honiara", region: "Oceania", subregion: "Melanesia", population: 720000, area: 28896, currency: "Solomon Islands dollar (SBD)", languages: "English, Pijin", note: "Guadalcanal saw some of the fiercest Pacific fighting of the Second World War." },
+  { code: "TO", name: "Tonga", capital: "Nuku'alofa", region: "Oceania", subregion: "Polynesia", population: 110000, area: 747, currency: "Tongan paʻanga (TOP)", languages: "Tongan, English", note: "A kingdom never formally colonised, ruled by the Tupou dynasty since 1845." },
+  { code: "TV", name: "Tuvalu", capital: "Funafuti", region: "Oceania", subregion: "Polynesia", population: 11000, area: 26, currency: "Australian dollar (AUD)", languages: "Tuvaluan, English", note: "Nine low-lying atolls whose highest point is under five metres above the sea." },
+  { code: "VU", name: "Vanuatu", capital: "Port Vila", region: "Oceania", subregion: "Melanesia", population: 330000, area: 12189, currency: "Vanuatu vatu (VUV)", languages: "Bislama, English, French", note: "Independent in 1980; the New Hebrides had been ruled jointly by Britain and France." },
+];
+
+
+/* ==================== src/data/history.js ==================== */
+
+export const ERAS = [
+  {
+    slug: "first-cities",
+    title: "First Cities",
+    span: "c. 3500 – 1200 BCE",
+    start: -3500,
+    end: -1200,
+    summary:
+      "Cities, writing and the first states form along the great river valleys of Mesopotamia, Egypt, the Indus and the Yellow River.",
+    mapNote: "A world of city-states and river kingdoms, connected by caravan and river boat.",
+  },
+  {
+    slug: "ancient-empires",
+    title: "Ancient Empires",
+    span: "1200 BCE – 476 CE",
+    start: -1200,
+    end: 476,
+    summary:
+      "Empires from Rome to China standardise money, law and roads, and the first world religions take shape.",
+    mapNote: "Four great empires share the map: Rome, Parthia, the Kushans and Han China.",
+  },
+  {
+    slug: "medieval-world",
+    title: "Medieval World",
+    span: "476 – 1453",
+    start: 476,
+    end: 1453,
+    summary:
+      "Faiths, steppe empires and plague reshape three continents; printing and gunpowder arrive.",
+    mapNote: "Caliphates, the Mongol khanates and feudal Europe, with trade routes running overland.",
+  },
+  {
+    slug: "age-of-discovery",
+    title: "Age of Discovery",
+    span: "1453 – 1648",
+    start: 1453,
+    end: 1648,
+    summary:
+      "Ocean routes join the continents, old certainties break, and the first global trading companies appear.",
+    mapNote: "The Atlantic and Indian oceans become highways; empires begin to ring the globe.",
+  },
+  {
+    slug: "enlightenment-revolution",
+    title: "Enlightenment & Revolution",
+    span: "1648 – 1815",
+    start: 1648,
+    end: 1815,
+    summary:
+      "Reason, rights and revolution redraw the Atlantic world, from Philadelphia to Port-au-Prince.",
+    mapNote: "Absolute monarchies on the continent, a new republic in America, a slave revolt in the Caribbean.",
+  },
+  {
+    slug: "industry-empire",
+    title: "Industry & Empire",
+    span: "1815 – 1914",
+    start: 1815,
+    end: 1914,
+    summary: "Steam, steel and empire compress distance and concentrate power in a handful of capitals.",
+    mapNote: "Railways and telegraphs bind continents; European empires claim most of Africa and Asia.",
+  },
+  {
+    slug: "modern-world",
+    title: "Modern World",
+    span: "1914 – today",
+    start: 1914,
+    end: 2026,
+    summary:
+      "Total war, decolonisation, the Cold War and a connected planet. Most present-day borders are drawn here.",
+    mapNote: "Around 195 sovereign states, most of them created after 1945.",
+  },
+];
+
+export const EVENTS = [
+  // First Cities
+  { id: "writing", era: "first-cities", sortYear: -3500, year: "c. 3500 BCE", title: "Writing is invented at Uruk", place: "Uruk, Sumer", summary: "Clay tablets begin to record rations and trade: the first written records, and with them the start of recorded history.", tag: "Politics" },
+  { id: "egypt-unified", era: "first-cities", sortYear: -3100, year: "c. 3100 BCE", title: "Egypt is unified", place: "Nile Valley", summary: "Upper and Lower Egypt are joined under a single crown, beginning three thousand years of pharaonic rule.", tag: "Politics" },
+  { id: "giza", era: "first-cities", sortYear: -2600, year: "c. 2600 BCE", title: "The Great Pyramid rises at Giza", place: "Giza, Egypt", summary: "Khufu's tomb is built from 2.3 million blocks and remains the tallest structure on earth for 3,800 years.", tag: "Culture" },
+  { id: "mohenjo-daro", era: "first-cities", sortYear: -2500, year: "c. 2500 BCE", title: "Mohenjo-daro lays out its grid", place: "Indus Valley", summary: "A city of perhaps 40,000 people appears with drains, wells, granaries and standardised bricks.", tag: "Culture" },
+  { id: "akkad", era: "first-cities", sortYear: -2334, year: "c. 2334 BCE", title: "Sargon founds the Akkadian Empire", place: "Mesopotamia", summary: "The first empire unites the Sumerian city-states under one ruler and one standing army.", tag: "Politics" },
+  { id: "xia", era: "first-cities", sortYear: -2100, year: "c. 2100 BCE", title: "The Xia dynasty is remembered", place: "Yellow River", summary: "Traditional histories place China's first dynasty here; the Bronze Age Erlitou culture matches the dates.", tag: "Politics" },
+  { id: "hammurabi", era: "first-cities", sortYear: -1792, year: "c. 1792 BCE", title: "Hammurabi's code is carved", place: "Babylon", summary: "282 laws displayed publicly on a stone stele fix fines and punishments for an entire kingdom.", tag: "Politics" },
+  { id: "thera", era: "first-cities", sortYear: -1650, year: "c. 1650 BCE", title: "Thera erupts", place: "Aegean Sea", summary: "A volcanic blast in the Cyclades buries the town of Akrotiri and may weaken Minoan Crete.", tag: "Science" },
+  { id: "kadesh", era: "first-cities", sortYear: -1274, year: "1274 BCE", title: "Egypt and the Hittites fight at Kadesh", place: "Syria", summary: "One of the largest chariot battles ever fought ends in a peace treaty, the earliest surviving one.", tag: "Conflict" },
+  { id: "bronze-collapse", era: "first-cities", sortYear: -1200, year: "c. 1200 BCE", title: "The Bronze Age collapses", place: "Eastern Mediterranean", summary: "Within two generations Mycenae, Ugarit and the Hittite empire fall, and long-distance trade vanishes.", tag: "Conflict" },
+
+  // Ancient Empires
+  { id: "rome-founded", era: "ancient-empires", sortYear: -753, year: "753 BCE", title: "Rome is founded", place: "Rome", summary: "Romulus and Remus aside, archaeology shows huts on the Palatine hill by the 8th century BCE.", tag: "Politics" },
+  { id: "cyrus", era: "ancient-empires", sortYear: -550, year: "550 BCE", title: "Cyrus founds the Achaemenid Empire", place: "Pasargadae, Persia", summary: "Cyrus overthrows the Medes and builds an empire stretching from the Aegean to the Indus.", tag: "Politics" },
+  { id: "athenian-democracy", era: "ancient-empires", sortYear: -508, year: "508 BCE", title: "Athenian democracy begins", place: "Athens", summary: "Cleisthenes' reforms give citizens a vote in the assembly: the first democracy in the record.", tag: "Politics" },
+  { id: "alexander", era: "ancient-empires", sortYear: -336, year: "336 BCE", title: "Alexander takes the Macedonian throne", place: "Pella, Macedon", summary: "In thirteen years he marches to the Indus, founding cities and spreading Greek as a common language.", tag: "Conflict" },
+  { id: "maurya", era: "ancient-empires", sortYear: -321, year: "321 BCE", title: "Chandragupta founds the Maurya Empire", place: "Pataliputra, India", summary: "The first empire to unite most of the subcontinent; Ashoka later converts it to Buddhism.", tag: "Politics" },
+  { id: "qin", era: "ancient-empires", sortYear: -221, year: "221 BCE", title: "Qin Shi Huang unifies China", place: "Xianyang", summary: "Standard weights, coinage, script and axle widths; the first Great Wall joins older walls.", tag: "Politics" },
+  { id: "carthage", era: "ancient-empires", sortYear: -146, year: "146 BCE", title: "Rome destroys Carthage", place: "Carthage", summary: "The Third Punic War ends with the city razed and its territory made a Roman province.", tag: "Conflict" },
+  { id: "augustus", era: "ancient-empires", sortYear: -27, year: "27 BCE", title: "Augustus becomes emperor", place: "Rome", summary: "The republic ends in all but name; the empire's borders will hold for four centuries.", tag: "Politics" },
+  { id: "second-temple", era: "ancient-empires", sortYear: 70, year: "70 CE", title: "The Second Temple is destroyed", place: "Jerusalem", summary: "Roman legions sack the city after a four-year revolt; the Western Wall is what remains.", tag: "Religion" },
+  { id: "west-rome-falls", era: "ancient-empires", sortYear: 476, year: "476 CE", title: "The Western Roman Empire ends", place: "Ravenna", summary: "Odoacer deposes Romulus Augustulus; the eastern empire carries on for another thousand years.", tag: "Politics" },
+
+  // Medieval World
+  { id: "hijra", era: "medieval-world", sortYear: 622, year: "622", title: "The Hijra", place: "Medina", summary: "Muhammad's move from Mecca begins the Islamic calendar and the first Muslim state.", tag: "Religion" },
+  { id: "charlemagne", era: "medieval-world", sortYear: 800, year: "800", title: "Charlemagne is crowned emperor", place: "Rome", summary: "The pope crowns a Frankish king, reviving the imperial title in the west.", tag: "Politics" },
+  { id: "diamond-sutra", era: "medieval-world", sortYear: 868, year: "868", title: "The Diamond Sutra is printed", place: "Dunhuang, China", summary: "The world's earliest dated printed book, five centuries before Gutenberg.", tag: "Science" },
+  { id: "hastings", era: "medieval-world", sortYear: 1066, year: "1066", title: "The Norman conquest", place: "Hastings, England", summary: "William takes England, replacing its Anglo-Saxon nobility and rewriting its language.", tag: "Conflict" },
+  { id: "first-crusade", era: "medieval-world", sortYear: 1099, year: "1099", title: "The First Crusade takes Jerusalem", place: "Jerusalem", summary: "A three-year campaign from Europe ends in a massacre and four Crusader states.", tag: "Conflict" },
+  { id: "genghis", era: "medieval-world", sortYear: 1206, year: "1206", title: "Genghis Khan unites the steppe", place: "Mongolia", summary: "The Mongol Empire will become the largest contiguous land empire in history.", tag: "Politics" },
+  { id: "baghdad", era: "medieval-world", sortYear: 1258, year: "1258", title: "The Mongols sack Baghdad", place: "Baghdad", summary: "The Abbasid caliphate ends; libraries and irrigation works are destroyed with the city.", tag: "Conflict" },
+  { id: "black-death", era: "medieval-world", sortYear: 1347, year: "1347", title: "The Black Death reaches Europe", place: "Messina, Sicily", summary: "Plague kills perhaps a third of Europe within five years, reshaping labour and land ownership.", tag: "Science" },
+  { id: "pachacuti", era: "medieval-world", sortYear: 1438, year: "1438", title: "Pachacuti expands the Inca state", place: "Cusco", summary: "Within sixty years Tawantinsuyu runs 4,000 km along the Andes on a road network of stone.", tag: "Politics" },
+  { id: "constantinople", era: "medieval-world", sortYear: 1453, year: "1453", title: "Constantinople falls", place: "Constantinople", summary: "Ottoman cannon breach the Theodosian walls; the Byzantine empire ends after 1,100 years.", tag: "Conflict" },
+
+  // Age of Discovery
+  { id: "columbus", era: "age-of-discovery", sortYear: 1492, year: "1492", title: "Columbus crosses the Atlantic", place: "Caribbean", summary: "Four voyages begin sustained contact between the hemispheres, and the exchange of crops, animals and disease.", tag: "Exploration" },
+  { id: "gama", era: "age-of-discovery", sortYear: 1498, year: "1498", title: "Vasco da Gama reaches India", place: "Calicut", summary: "The Portuguese sea route around Africa breaks the Venetian monopoly on the spice trade.", tag: "Exploration" },
+  { id: "luther", era: "age-of-discovery", sortYear: 1517, year: "1517", title: "Luther posts his theses", place: "Wittenberg", summary: "A protest over indulgences splits western Christianity and reshapes European politics.", tag: "Religion" },
+  { id: "tenochtitlan", era: "age-of-discovery", sortYear: 1521, year: "1521", title: "Tenochtitlan falls", place: "Mexico", summary: "Cortés, allied with Tlaxcalan armies, destroys the Aztec capital; smallpox does most of the killing.", tag: "Conflict" },
+  { id: "mughal", era: "age-of-discovery", sortYear: 1526, year: "1526", title: "Babur founds the Mughal Empire", place: "Panipat, India", summary: "Gunpowder and cavalry win Delhi; the dynasty will rule most of India for three centuries.", tag: "Politics" },
+  { id: "copernicus", era: "age-of-discovery", sortYear: 1543, year: "1543", title: "Copernicus publishes De revolutionibus", place: "Nuremberg", summary: "The earth is placed in orbit around the sun, and the medieval cosmos begins to dissolve.", tag: "Science" },
+  { id: "armada", era: "age-of-discovery", sortYear: 1588, year: "1588", title: "The Spanish Armada is defeated", place: "English Channel", summary: "Weather and English fireships break the invasion fleet; Atlantic power shifts north.", tag: "Conflict" },
+  { id: "eic", era: "age-of-discovery", sortYear: 1600, year: "1600", title: "The East India Company is chartered", place: "London", summary: "A private company receives a monopoly on English trade with Asia, and later an army of its own.", tag: "Economy" },
+  { id: "thirty-years", era: "age-of-discovery", sortYear: 1618, year: "1618", title: "The Thirty Years' War begins", place: "Prague", summary: "A defenestration in Bohemia starts a war that kills up to a third of the German population.", tag: "Conflict" },
+  { id: "westphalia", era: "age-of-discovery", sortYear: 1648, year: "1648", title: "The Peace of Westphalia", place: "Münster and Osnabrück", summary: "Sovereign states, not dynasties or churches, become the basic units of European order.", tag: "Politics" },
+
+  // Enlightenment & Revolution
+  { id: "newton", era: "enlightenment-revolution", sortYear: 1687, year: "1687", title: "Newton publishes the Principia", place: "London", summary: "Gravity and the laws of motion explain the heavens with mathematics for the first time.", tag: "Science" },
+  { id: "encyclopedie", era: "enlightenment-revolution", sortYear: 1751, year: "1751", title: "The Encyclopédie begins publication", place: "Paris", summary: "Diderot and d'Alembert collect 28 volumes of everything known, and attack received authority while doing it.", tag: "Culture" },
+  { id: "independence", era: "enlightenment-revolution", sortYear: 1776, year: "1776", title: "The Declaration of Independence", place: "Philadelphia", summary: "Thirteen colonies claim natural rights and dissolve their tie to the British crown.", tag: "Politics" },
+  { id: "bastille", era: "enlightenment-revolution", sortYear: 1789, year: "1789", title: "The French Revolution begins", place: "Paris", summary: "The Bastille falls; within four years a king is executed and a republic declared.", tag: "Politics" },
+  { id: "haiti-revolt", era: "enlightenment-revolution", sortYear: 1791, year: "1791", title: "The Haitian Revolution begins", place: "Saint-Domingue", summary: "The largest slave uprising in history begins the only revolution that ended slavery by force.", tag: "Conflict" },
+  { id: "haiti", era: "enlightenment-revolution", sortYear: 1804, year: "1804", title: "Haiti declares independence", place: "Gonaïves", summary: "The first Black republic is founded, and France sells Louisiana to fund its European wars.", tag: "Politics" },
+  { id: "napoleon", era: "enlightenment-revolution", sortYear: 1804, year: "1804", title: "Napoleon crowns himself emperor", place: "Paris", summary: "Revolutionary France becomes an empire that will dominate the continent for a decade.", tag: "Politics" },
+  { id: "vienna", era: "enlightenment-revolution", sortYear: 1815, year: "1815", title: "Waterloo and the Congress of Vienna", place: "Belgium and Austria", summary: "Napoleon's defeat and a redrawn map of Europe set the terms for a century of relative peace.", tag: "Politics" },
+
+  // Industry & Empire
+  { id: "railway", era: "industry-empire", sortYear: 1825, year: "1825", title: "The first public steam railway opens", place: "Stockton to Darlington", summary: "Locomotion No. 1 carries coal and passengers, and distance starts to shrink.", tag: "Science" },
+  { id: "revolutions-1848", era: "industry-empire", sortYear: 1848, year: "1848", title: "Revolutions sweep Europe", place: "Paris to Budapest", summary: "The Communist Manifesto appears as barricades rise in a dozen capitals.", tag: "Politics" },
+  { id: "darwin", era: "industry-empire", sortYear: 1859, year: "1859", title: "Darwin publishes On the Origin of Species", place: "London", summary: "Natural selection gives biology a mechanism, and provokes a decade of argument.", tag: "Science" },
+  { id: "italy", era: "industry-empire", sortYear: 1861, year: "1861", title: "Italy is unified", place: "Turin", summary: "Garibaldi's volunteers and Cavour's diplomacy create a single Italian kingdom.", tag: "Politics" },
+  { id: "suez", era: "industry-empire", sortYear: 1869, year: "1869", title: "The Suez Canal opens", place: "Egypt", summary: "The sea route to Asia shortens by 7,000 km and makes Egypt a strategic prize.", tag: "Economy" },
+  { id: "german-empire", era: "industry-empire", sortYear: 1871, year: "1871", title: "The German Empire is proclaimed", place: "Versailles", summary: "Prussia unites Germany after defeating France, and the balance of power shifts.", tag: "Politics" },
+  { id: "berlin-conference", era: "industry-empire", sortYear: 1884, year: "1884", title: "The Berlin Conference", place: "Berlin", summary: "European powers agree rules for claiming Africa, and the scramble begins in earnest.", tag: "Politics" },
+  { id: "spanish-american", era: "industry-empire", sortYear: 1898, year: "1898", title: "The Spanish–American War", place: "Cuba and the Philippines", summary: "Spain loses its last major colonies; the United States becomes a Pacific power.", tag: "Conflict" },
+  { id: "xinhai", era: "industry-empire", sortYear: 1911, year: "1911", title: "The Xinhai Revolution", place: "Wuhan", summary: "The Qing dynasty falls after 268 years and a republic is declared.", tag: "Politics" },
+  { id: "ww1", era: "industry-empire", sortYear: 1914, year: "1914", title: "War breaks out", place: "Sarajevo", summary: "An assassination in Bosnia triggers alliance obligations that pull the world into war.", tag: "Conflict" },
+
+  // Modern World
+  { id: "russian-rev", era: "modern-world", sortYear: 1917, year: "1917", title: "The Russian Revolution", place: "Petrograd", summary: "The Bolsheviks take power and create the first communist state.", tag: "Politics" },
+  { id: "versailles", era: "modern-world", sortYear: 1919, year: "1919", title: "The Treaty of Versailles", place: "Paris", summary: "Germany accepts blame and reparations; new states are carved out of old empires.", tag: "Politics" },
+  { id: "crash", era: "modern-world", sortYear: 1929, year: "1929", title: "The Wall Street Crash", place: "New York", summary: "A market collapse becomes a global depression and destroys faith in liberal economics.", tag: "Economy" },
+  { id: "ww2", era: "modern-world", sortYear: 1939, year: "1939", title: "The Second World War begins", place: "Poland", summary: "Six years of war will kill some 70 million people across four continents.", tag: "Conflict" },
+  { id: "un", era: "modern-world", sortYear: 1945, year: "1945", title: "The United Nations is founded", place: "San Francisco", summary: "Fifty-one states sign the charter; the Security Council gets five permanent members.", tag: "Politics" },
+  { id: "partition", era: "modern-world", sortYear: 1947, year: "1947", title: "India is partitioned", place: "Delhi", summary: "Independence and partition create India and Pakistan and displace fifteen million people.", tag: "Politics" },
+  { id: "udhr", era: "modern-world", sortYear: 1948, year: "1948", title: "The Universal Declaration of Human Rights", place: "Paris", summary: "The UN adopts thirty articles of rights, the foundation of modern human rights law.", tag: "Politics" },
+  { id: "year-of-africa", era: "modern-world", sortYear: 1960, year: "1960", title: "The Year of Africa", place: "Africa", summary: "Seventeen colonies become independent states in twelve months.", tag: "Politics" },
+  { id: "berlin-wall", era: "modern-world", sortYear: 1989, year: "1989", title: "The Berlin Wall falls", place: "Berlin", summary: "The Cold War order collapses across eastern Europe within two years.", tag: "Politics" },
+  { id: "ussr", era: "modern-world", sortYear: 1991, year: "1991", title: "The Soviet Union dissolves", place: "Moscow", summary: "Fifteen republics become independent states and the Cold War ends.", tag: "Politics" },
+  { id: "apartheid", era: "modern-world", sortYear: 1994, year: "1994", title: "Apartheid ends in South Africa", place: "Johannesburg", summary: "The first elections with universal suffrage bring Nelson Mandela to the presidency.", tag: "Politics" },
+  { id: "arab-spring", era: "modern-world", sortYear: 2011, year: "2011", title: "The Arab Spring", place: "Tunis to Cairo", summary: "Protests topple governments in Tunisia, Egypt, Libya and Yemen.", tag: "Politics" },
+  { id: "covid", era: "modern-world", sortYear: 2020, year: "2020", title: "A pandemic is declared", place: "Global", summary: "COVID-19 reaches every continent within three months and halts global travel.", tag: "Science" },
+];
+
+export const EVENT_TAGS = [
+  "Politics",
+  "Conflict",
+  "Science",
+  "Culture",
+  "Religion",
+  "Economy",
+  "Exploration",
+];
+
+export function getEra(slug) {
+  return ERAS.find((era) => era.slug === slug) || null;
+}
+
+export function eventsForEra(slug) {
+  return EVENTS.filter((event) => event.era === slug).sort((a, b) => a.sortYear - b.sortYear);
+}
+
+export function eraForYear(year) {
+  return ERAS.find((era) => year >= era.start && year < era.end) || null;
+}
+
+export function eventCountByEra() {
+  return ERAS.reduce((acc, era) => {
+    acc[era.slug] = EVENTS.filter((event) => event.era === era.slug).length;
+    return acc;
+  }, {});
+}
